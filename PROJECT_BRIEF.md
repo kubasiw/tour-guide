@@ -109,6 +109,15 @@ regułowy algorytm. To praca "Beyond MVP" — dopiero po działającym regułowy
   (np. wprost z ekstraktu Wikipedii/Wikivoyage — darmowe API, bez klucza) — zero kosztu API dla
   ruchu anonimowego. To pierwszy realny kandydat do użycia już zbudowanego `authGuard` na froncie.
 - Klucz API Claude tylko po stronie backendu (`AiModule`), nigdy we frontendzie.
+- **Adaptywny motyw wizualny per region** (pomysł użytkownika, 2026-07-19): domyślny design
+  ("Trail & earth" — patrz `CLAUDE.md`) obowiązuje wszędzie *przed* wygenerowaniem planu (nav, auth,
+  area-picker, activity-selector, trip-details). Na widoku **wygenerowanego planu** (`plan-view`)
+  ten sam call do AI, który analizuje obszar, dodatkowo klasyfikuje go do jednego z kilku
+  **gotowych, zaprojektowanych z góry motywów** (np. coastal, mountain-trail, urban, countryside) —
+  AI tylko wybiera etykietę, nie generuje CSS/kolorów samodzielnie (ryzyko złego kontrastu, zepsutego
+  dark mode, niespójności komponentów). Motyw = inny zestaw zmiennych CSS podpięty klasą-wrapperem
+  na widoku planu, bez zmian strukturalnych layoutu. Zanim istnieje prawdziwa klasyfikacja AI, można
+  zacząć od prostej heurystyki regułowej (np. na podstawie wybranych aktywności) jako placeholder.
 
 ## Uwagi
 - Projekt eksperymentalny — celem jest też poznanie możliwości Claude Code w praktyce,

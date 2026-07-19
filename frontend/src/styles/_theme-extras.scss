@@ -1,0 +1,25 @@
+// Small extras built on top of Bootstrap for our custom $accent token (not a
+// native Bootstrap theme color, see _variables.scss). Import this *after*
+// Bootstrap so its color helper functions (shade-color, color-contrast) are
+// available.
+
+.btn-accent {
+  color: color-contrast($accent);
+  background-color: $accent;
+  border-color: $accent;
+
+  &:hover,
+  &:focus {
+    color: color-contrast(shade-color($accent, 10%));
+    background-color: shade-color($accent, 10%);
+    border-color: shade-color($accent, 10%);
+  }
+}
+
+.text-accent {
+  color: $accent !important;
+}
+
+.bg-accent {
+  background-color: $accent !important;
+}

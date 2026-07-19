@@ -185,8 +185,19 @@ Frontend-specific:
   (not `@use`), so overrides must use plain variable assignment + `@import`, not `@use ... with`.
   Expect (and ignore) Dart Sass's "`@import` rules are deprecated" build warnings until Bootstrap
   migrates its own source — this is a known, ecosystem-wide, currently-unavoidable warning, not a
-  bug in this repo. Current variable/mixin values are placeholders; real design tokens land once
-  the app's visual design is decided.
+  bug in this repo. **Design direction: "Trail & earth"** (confirmed 2026-07-19) — forest green
+  `$primary` (`#2f6b4f`) + a warm amber `$accent` (`#e0973d`, not a native Bootstrap theme slot; see
+  `_theme-extras.scss` for its `.btn-accent`/`.text-accent`/`.bg-accent` utility classes, built with
+  Bootstrap's own `shade-color()`/`color-contrast()` functions for consistent hover/contrast
+  behavior). App icon/favicon is `bi-backpack-fill` — deliberately generic/universal, not
+  hiking-specific, since it's the default identity across every area type (city, coast, mountains).
+  **Adaptive per-region theming (planned, not built yet):** once the AI plan generator exists, the
+  same AI call that analyzes the area should also classify it into one of a small set of *curated,
+  pre-built* theme presets (e.g. coastal, mountain-trail, urban, countryside) — applied only to the
+  generated `plan-view`, via a wrapper class swapping CSS custom properties, never via AI-generated
+  freeform CSS (that risks broken contrast/dark-mode/component consistency). Default/shared chrome
+  (nav, auth, area-picker, activity-selector, trip-details) always stays on the base "Trail & earth"
+  theme regardless of region. See `PROJECT_BRIEF.md`'s "Integracja AI" for the full note.
 - **UI components**: `@ng-bootstrap/ng-bootstrap` (standalone components: `NgbAlert`, dropdown,
   modal, accordion, tooltip, ...) for interactive UI, `bootstrap-icons` (`bi bi-*` classes, loaded
   globally via `angular.json`'s `styles` array) for icons. Chosen over Angular Material to keep one

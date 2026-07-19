@@ -1,8 +1,14 @@
-// Design tokens for this app. Values here are placeholders until the app's
-// visual design is decided — replace them, don't add new one-off colors/spacing
-// elsewhere once real branding lands.
+// Design tokens for this app — "Trail & earth" direction (forest green + warm
+// amber), confirmed 2026-07-19. Don't add new one-off colors/spacing elsewhere;
+// extend the tokens here instead.
 
 // Bootstrap variable overrides — must be set *before* `@import "bootstrap"` in
 // styles.scss, since Bootstrap's own Sass uses classic `@import` (shared global
 // scope), not `@use`. See https://getbootstrap.com/docs/5.3/customize/sass/
 $border-radius: 0.6rem;
+$primary: #2f6b4f;
+
+// Not a native Bootstrap theme slot — our own warm accent, used sparingly for
+// standout calls to action (see _theme-extras.scss for the utility classes
+// built on top of it).
+$accent: #e0973d;

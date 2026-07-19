@@ -1,19 +1,23 @@
 <nav class="navbar navbar-expand bg-body-tertiary">
-  <div class="container justify-content-end">
-    @if (authService.isAuthenticated()) {
-      <span class="navbar-text me-3">{{ authService.me.value()?.email }}</span>
-      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="authService.logout()">
-        Log out
-      </button>
-    } @else {
-      <a routerLink="/login" class="btn btn-outline-primary btn-sm me-2">Log in</a>
-      <a routerLink="/register" class="btn btn-primary btn-sm">Register</a>
-    }
+  <div class="container justify-content-between">
+    <span class="navbar-brand mb-0 d-flex align-items-center">
+      <i class="bi bi-backpack-fill me-2"></i>{{ title() }}
+    </span>
+    <div>
+      @if (authService.isAuthenticated()) {
+        <span class="navbar-text me-3">{{ authService.me.value()?.email }}</span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="authService.logout()">
+          Log out
+        </button>
+      } @else {
+        <a routerLink="/login" class="btn btn-outline-primary btn-sm me-2">Log in</a>
+        <a routerLink="/register" class="btn btn-primary btn-sm">Register</a>
+      }
+    </div>
   </div>
 </nav>
 
 <main class="container py-4">
-  <h1>{{ title() }}</h1>
   @if (health.isLoading()) {
     <app-loader variant="spinner" />
   } @else if (health.error()) {

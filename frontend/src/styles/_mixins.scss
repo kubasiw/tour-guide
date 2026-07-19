@@ -7,3 +7,7 @@
   align-items: center;
   justify-content: center;
 }
+
+@mixin narrow-form($max-width: 420px) {
+  max-width: $max-width;
+}

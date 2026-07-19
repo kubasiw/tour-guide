@@ -25,10 +25,12 @@ Monorepo with two independent npm projects, no shared root package.json or works
 **Faza 1 (MVP)** — get a working skeleton first, in this order:
 
 1. ✅ Angular app + NestJS API skeletons wired together via a health check endpoint
-2. Auth (register/login, simple email+password, JWT) — backend done; frontend `auth/` UI not
-   started yet (deliberately deferred — area picker doesn't need a logged-in user)
+2. ✅ Auth (register/login, simple email+password, JWT) — backend + frontend `auth/` both done
+   (login/register pages, `AuthService`, HTTP interceptor, route guard built but deliberately not
+   applied to any route yet — see "Auth is not a hard gate" below)
 3. 🚧 Area picker (map, draw polygon or radius from a point) — frontend `area-picker/` done
-   (Leaflet + leaflet-draw, mounted at the default route); no backend `AreasModule`/persistence yet
+   (Leaflet + leaflet-draw, mounted at the default route, unauthenticated); no backend
+   `AreasModule`/persistence yet
 4. Persist a plain Plan in the DB — structure only, no generation logic yet
 5. Integrate one external API (Open-Meteo) as a proof of concept
 
@@ -49,6 +51,13 @@ and saved templates.
 - **POI / trails / monuments / restaurants = OpenStreetMap + Overpass API** — free, matches the
   no-cost/open-source constraint.
 - Frontend/backend talk over plain HTTP; no BFF or GraphQL layer planned.
+- **Auth is not a hard gate** — this app follows the modern-SPA pattern (like Figma/Notion/Canva):
+  unauthenticated users can see and use most features (pick an area, get a generic AI overview)
+  but with reduced functionality; logging in unlocks the richer, customizable experience (choosing
+  accommodation/restaurant/trail/museum/attraction/parking categories once the generator exists).
+  Consequence: don't reflexively wrap new routes in `authGuard` — gate at the feature/response
+  level instead, and reserve route-level gating for things that inherently require an account
+  (e.g. a future "my saved plans" list).
 
 ## Commands
 
@@ -93,8 +102,11 @@ npm run format         # prettier --write over src/**/*.{ts,html,scss}
 - The backend brief calls for one Nest module per bounded concern: `AuthModule`, `UsersModule`,
   `AreasModule`, `PoiModule`, `WeatherModule`, `PlansModule`, `PlanGeneratorModule` — only
   `HealthModule` exists so far.
-- Frontend talks to backend over plain HTTP (`HttpClient`), hardcoded to `http://localhost:3000`
-  during this early stage (see `health.service.ts`) — no environment-based API URL config exists yet.
+- Frontend talks to backend over plain HTTP (`HttpClient`); the base URL is the shared
+  `API_BASE_URL` constant in `frontend/src/app/core/api-base-url.ts` (hardcoded to
+  `http://localhost:3000` during this early stage — no environment-based config exists yet, but at
+  least it's a single constant now, not copy-pasted per service). New services calling the backend
+  should import it rather than hardcoding the URL again.
 
 ## Code style & conventions
 
@@ -120,6 +132,12 @@ Frontend-specific:
   wrapping an existing service method); use `httpResource()` for a plain direct HTTP GET. This was
   chosen over `@ngrx/signals` because that library's peer dependency (`@angular/core: ^21.0.0`,
   as of writing) doesn't yet support Angular 22 — revisit if/when it catches up.
+  **Gotcha (caused a real bug in `AuthService.me`):** reading a signal *inside* the `stream`/
+  `loader` callback does **not** make the resource re-run when that signal changes — only signal
+  reads inside the separate `params` function are tracked; `stream`/`loader` just receives the
+  resolved value via `({ params }) => ...`. Without a `params` function, the resource computes once
+  at creation and never reruns on its own. See `frontend/src/app/auth/auth.service.ts`'s `me`
+  resource for the correct shape (`params: () => this.tokenSignal()`, `stream: ({ params: token }) => ...`).
 - Pair loading state with the shared `<app-loader>` component
   (`frontend/src/app/shared/loader/loader.ts`): `variant="spinner"` for inline/small UI (buttons,
   small checks), `"skeleton"` for lists/cards, `"bar"` for full-view long-running operations (e.g.
@@ -128,6 +146,12 @@ Frontend-specific:
   of this whole pattern end to end (service returns an `Observable`, component wraps it in
   `rxResource()`, template branches on `.isLoading()`/`.error()`/`.value()` and shows `<app-loader>`
   while loading) — follow the same shape for new async data in other components.
+- `resource()`/`rxResource()`/`httpResource()` are for data you load/display *reactively* (GETs,
+  derived from some signal state — see `AuthService.me` re-fetching whenever the token signal
+  changes). One-shot mutations triggered by a form submit (login, register, and similar "do a
+  thing" actions) don't fit that reactive-recompute shape — keep those as plain
+  `Observable`-returning service methods that the component `.subscribe()`s to directly (see
+  `frontend/src/app/auth/login/login.ts`). Don't force a `resource()` around a submit button.
 - **Styling**: no inline `style="..."` in templates — enforced by
   `@angular-eslint/template/no-inline-styles` (lint error, not just convention). Use Bootstrap
   utility classes for layout/spacing/typography where Bootstrap already provides them (`container`,

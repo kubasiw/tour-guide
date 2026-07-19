@@ -41,10 +41,29 @@ is complete; work now moves to "Beyond MVP" below.
    (`GET /weather?lat=&lng=`, no key needed, uses Node's global `fetch`), surfaced on `/plans/:id`
    as a 5-day forecast for the plan's `Area` centroid (`areaCenter()` in `core/area.model.ts`)
 
-**Beyond MVP** (only after the skeleton above works): POI ingestion from Overpass, the actual
-plan-generation engine (starts as a simple rule-based algorithm, can grow later), plan editing,
-saved templates, and the AI integration described in `PROJECT_BRIEF.md`'s "Integracja AI" section
-(Claude API-authored plan narration + a tool-calling chat assistant for editing a plan).
+**Beyond MVP** — next up, in this agreed order (none started yet):
+
+1. Frontend `activity-selector/` (multi-select: hiking, sightseeing, culture, food, ...) +
+   `trip-details/` (arrival date + duration) — capture the preferences the generator needs. Both
+   unauthenticated, same as `area-picker`. Extend `Plan` (currently just `status`/`area`) with the
+   captured activities/dates once these exist.
+2. `PoiModule` — ingest/cache POI data from Overpass/OSM for a given `Area`.
+3. `PlanGeneratorModule` — starts as a simple rule-based algorithm combining `Area` + `Activity`
+   selections + `WeatherModule` forecast into a concrete list of `PlanItem`s (no AI yet).
+4. Plan editing (reorder/add/remove `PlanItem`s) + `my-plans/` (saved templates, listing a user's
+   plans) — the first feature that inherently requires an account, since "my plans" only makes
+   sense for a logged-in user; a natural candidate for finally applying the already-built
+   `authGuard` to a route.
+5. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
+   (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
+   the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
+   gated behind login, for cost control this time (anonymous users get a non-LLM overview instead).
+6. Adaptive per-region theming on the generated plan view, once AI can classify an area's
+   character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
+
+Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
+preference-capture steps first — that was a real point of confusion once already (see git history
+around the "step 4" clarification).
 
 ## Key technical decisions
 
@@ -69,9 +88,10 @@ saved templates, and the AI integration described in `PROJECT_BRIEF.md`'s "Integ
 - **AI = Claude API (Anthropic)** for plan narration and a chat-based plan-editing assistant — see
   `PROJECT_BRIEF.md`'s "Integracja AI" for the full design (rule-filtered candidates + LLM narrates
   rather than invents, tool-calling for structured edits, per-POI description caching, API key
-  server-side only in a new `AiModule`). This is genuinely gated behind login (first real use of
-  `authGuard`) — unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract)
-  to keep anonymous traffic free of API cost.
+  server-side only in a new `AiModule`). This is genuinely gated behind login (one of the first real
+  uses of `authGuard`, alongside `my-plans/` — see the Roadmap below for which comes first) —
+  unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract) to keep
+  anonymous traffic free of API cost.
 
 ## Commands
 
@@ -115,12 +135,15 @@ npm run format         # prettier --write over src/**/*.{ts,html,scss}
   local state, wired up via `app.config.ts` (`provideRouter`, `provideHttpClient`, etc.) rather
   than a root module. Cross-cutting services (e.g. `src/app/core/health.service.ts`) live under
   `src/app/core/`.
-- The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/`,
-  `area-picker/`, `activity-selector/`, `trip-details/`, `plan-view/`, `my-plans/` — not all exist
-  yet, add them as those features are built.
-- The backend brief calls for one Nest module per bounded concern: `AuthModule`, `UsersModule`,
-  `AreasModule`, `PoiModule`, `WeatherModule`, `PlansModule`, `PlanGeneratorModule` — only
-  `HealthModule` exists so far.
+- The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/` ✅,
+  `area-picker/` ✅, `activity-selector/`, `trip-details/`, `plan-view/` (currently `plans/
+  plan-detail/`, a minimal stand-in — may get renamed/expanded once real generation exists),
+  `plan-chat/`, `my-plans/` — the rest don't exist yet, add them in the order in the Roadmap above.
+- The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
+  (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
+  step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅. Not built yet:
+  `PoiModule`, `PlanGeneratorModule`, `AiModule`, `PlanChatModule` — build them in that order (see
+  Roadmap above).
 - Frontend talks to backend over plain HTTP (`HttpClient`); the base URL is the shared
   `API_BASE_URL` constant in `frontend/src/app/core/api-base-url.ts` (hardcoded to
   `http://localhost:3000` during this early stage — no environment-based config exists yet, but at

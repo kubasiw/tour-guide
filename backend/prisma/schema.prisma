@@ -16,4 +16,22 @@ model User {
   email        String   @unique
   passwordHash String
   createdAt    DateTime @default(now())
+  plans        Plan[]
+}
+
+model Plan {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  status    String   @default("draft")
+  area      Area?
+  createdAt DateTime @default(now())
+}
+
+model Area {
+  id        String   @id @default(uuid())
+  planId    String   @unique
+  plan      Plan     @relation(fields: [planId], references: [id])
+  geometry  Json
+  createdAt DateTime @default(now())
 }

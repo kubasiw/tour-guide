@@ -28,10 +28,14 @@ Monorepo with two independent npm projects, no shared root package.json or works
 2. ✅ Auth (register/login, simple email+password, JWT) — backend + frontend `auth/` both done
    (login/register pages, `AuthService`, HTTP interceptor, route guard built but deliberately not
    applied to any route yet — see "Auth is not a hard gate" below)
-3. 🚧 Area picker (map, draw polygon or radius from a point) — frontend `area-picker/` done
-   (Leaflet + leaflet-draw, mounted at the default route, unauthenticated); no backend
-   `AreasModule`/persistence yet
-4. Persist a plain Plan in the DB — structure only, no generation logic yet
+3. ✅ Area picker (map, draw polygon or radius from a point) — frontend `area-picker/` done
+   (Leaflet + leaflet-draw, mounted at the default route, unauthenticated)
+4. ✅ Persist a plain Plan in the DB — structure only, no generation logic yet. `area-picker` has a
+   "Zatwierdź obszar" button that `POST /plans`s the drawn `Area` (status `draft`, no `userId` yet —
+   unauthenticated, see "Auth is not a hard gate") and navigates to `/plans/:id`
+   (`GET /plans/:id`, `httpResource`-driven). `Area` lives inside `PlansModule`, not a separate
+   `AreasModule` as the brief originally sketched — it's 1:1 with `Plan` and only ever created
+   alongside it; split it out later if Areas ever need independent reuse/listing.
 5. Integrate one external API (Open-Meteo) as a proof of concept
 
 **Beyond MVP** (only after the skeleton above works): POI ingestion from Overpass, the actual
@@ -80,6 +84,11 @@ npm test               # jest unit tests (*.spec.ts, rootDir src)
 npm run test:e2e       # jest e2e tests via test/jest-e2e.json
 npx jest path/to/file.spec.ts   # run a single unit test file
 ```
+
+After editing `prisma/schema.prisma`, run `npx prisma migrate dev --name <change>` — but don't
+assume that alone regenerates the client; if `npm run lint`/`build` suddenly reports every Prisma
+model method as untyped (`no-unsafe-*` errors), run `npx prisma generate` explicitly to refresh
+`node_modules/@prisma/client`.
 
 Backend listens on port 3000 (`process.env.PORT` override) and has CORS enabled for
 `http://localhost:4200` (see `src/main.ts`). Health check: `GET /health`.

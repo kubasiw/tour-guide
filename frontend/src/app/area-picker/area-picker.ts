@@ -7,10 +7,15 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { Router } from '@angular/router';
+import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import * as L from 'leaflet';
 import 'leaflet-draw';
-import { Area } from './area.model';
+import { Area } from '../core/area.model';
+import { extractErrorMessage } from '../core/http-error';
+import { AreaSummary } from '../shared/area-summary/area-summary';
+import { Loader } from '../shared/loader/loader';
+import { PlanService } from '../plans/plan.service';
 
 const DEFAULT_CENTER: L.LatLngExpression = [50.06, 19.94];
 const DEFAULT_ZOOM = 13;
@@ -25,15 +30,19 @@ L.Icon.Default.mergeOptions({
 
 @Component({
   selector: 'app-area-picker',
-  imports: [DecimalPipe],
+  imports: [AreaSummary, Loader, NgbAlert],
   templateUrl: './area-picker.html',
   styleUrl: './area-picker.scss',
 })
 export class AreaPicker {
   private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>('mapContainer');
   private readonly destroyRef = inject(DestroyRef);
+  private readonly planService = inject(PlanService);
+  private readonly router = inject(Router);
 
   protected readonly area = signal<Area | null>(null);
+  protected readonly confirming = signal(false);
+  protected readonly errorMessage = signal<string | null>(null);
 
   private drawnItems?: L.FeatureGroup;
 
@@ -44,6 +53,26 @@ export class AreaPicker {
   protected clear(): void {
     this.area.set(null);
     this.drawnItems?.clearLayers();
+  }
+
+  protected confirm(): void {
+    const area = this.area();
+    if (!area) {
+      return;
+    }
+
+    this.confirming.set(true);
+    this.errorMessage.set(null);
+
+    this.planService.create(area).subscribe({
+      next: (plan) => {
+        void this.router.navigate(['/plans', plan.id]);
+      },
+      error: (err: unknown) => {
+        this.confirming.set(false);
+        this.errorMessage.set(extractErrorMessage(err));
+      },
+    });
   }
 
   private initMap(): void {

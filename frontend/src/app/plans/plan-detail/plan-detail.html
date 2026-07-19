@@ -1,0 +1,14 @@
+<div class="container py-4">
+  @if (plan.isLoading()) {
+    <app-loader variant="spinner" />
+  } @else if (plan.error()) {
+    <p><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Plan not found.</p>
+  } @else if (plan.value(); as value) {
+    <h1 class="h3 mb-3">Plan ({{ value.status }})</h1>
+    <div class="card">
+      <div class="card-body">
+        <app-area-summary [area]="value.area" />
+      </div>
+    </div>
+  }
+</div>

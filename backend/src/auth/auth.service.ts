@@ -11,12 +11,15 @@ const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
-  constructor(
+  public constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(email: string, password: string) {
+  public async register(
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string }> {
     const existing = await this.usersService.findByEmail(email);
     if (existing) {
       throw new ConflictException('Email is already registered');
@@ -27,7 +30,10 @@ export class AuthService {
     return this.buildToken(user.id, user.email);
   }
 
-  async login(email: string, password: string) {
+  public async login(
+    email: string,
+    password: string,
+  ): Promise<{ accessToken: string }> {
     const user = await this.usersService.findByEmail(email);
     if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
       throw new UnauthorizedException('Invalid credentials');
@@ -36,7 +42,10 @@ export class AuthService {
     return this.buildToken(user.id, user.email);
   }
 
-  private async buildToken(userId: string, email: string) {
+  private async buildToken(
+    userId: string,
+    email: string,
+  ): Promise<{ accessToken: string }> {
     const accessToken = await this.jwtService.signAsync({ sub: userId, email });
     return { accessToken };
   }

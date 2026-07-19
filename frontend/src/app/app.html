@@ -1,6 +1,12 @@
 <main>
   <h1>{{ title() }}</h1>
-  <p>Backend status: {{ backendStatus() }}</p>
+  @if (health.isLoading()) {
+    <app-loader variant="spinner" />
+  } @else if (health.error()) {
+    <p>Backend status: error</p>
+  } @else {
+    <p>Backend status: {{ health.value()?.status }}</p>
+  }
 </main>
 
 <router-outlet />

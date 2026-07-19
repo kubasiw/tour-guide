@@ -11,7 +11,7 @@ export class HealthService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = 'http://localhost:3000/health';
 
-  check(): Observable<HealthStatus> {
+  public check(): Observable<HealthStatus> {
     return this.http.get<HealthStatus>(this.apiUrl);
   }
 }

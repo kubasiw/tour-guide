@@ -69,6 +69,8 @@ Backend listens on port 3000 (`process.env.PORT` override) and has CORS enabled 
 npm start              # ng serve, dev server on http://localhost:4200
 npm run build          # ng build
 npm test               # ng test (vitest-based @angular/build:unit-test builder)
+npm run lint           # ng lint (angular-eslint + typescript-eslint, type-checked)
+npm run format         # prettier --write over src/**/*.{ts,html,scss}
 ```
 
 ## Architecture notes
@@ -88,3 +90,36 @@ npm test               # ng test (vitest-based @angular/build:unit-test builder)
   `HealthModule` exists so far.
 - Frontend talks to backend over plain HTTP (`HttpClient`), hardcoded to `http://localhost:3000`
   during this early stage (see `health.service.ts`) — no environment-based API URL config exists yet.
+
+## Code style & conventions
+
+Both packages run TypeScript `strict: true` plus `noUnusedLocals`/`noUnusedParameters`, and both
+lint configs enforce (as errors, not warnings): explicit return types on every function/method
+(`@typescript-eslint/explicit-function-return-type`, `explicit-module-boundary-types`) and explicit
+`public`/`private`/`protected` on every class member (`explicit-member-accessibility`). Local
+variables with obvious inferred types don't need annotations — only functions/methods/class
+members are required to be explicit. New code must pass `npm run lint` in whichever package it
+touches; run `npm run format` for Prettier formatting (backend `.prettierrc` / frontend
+`.prettierrc`, already wired into each lint config).
+
+Frontend-specific:
+- Prefer signals for local component state and component APIs: `signal()`, `computed()`, and the
+  signal-based `input()`/`output()`/`model()` — not the decorator-based `@Input()`/`@Output()`.
+- Use the new control-flow syntax (`@if`/`@for`/`@switch`) in templates, not
+  `*ngIf`/`*ngFor`/`*ngSwitch`.
+- For async/remote data, use Angular's built-in `resource()` / `rxResource()` (from
+  `@angular/core/rxjs-interop`) / `httpResource()` (from `@angular/common/http`) as the
+  state-machine primitive — they expose `.value()`, `.isLoading()`, `.error()`, `.status()` as
+  signals, so there's no need for hand-rolled loading booleans or a custom store. Use
+  `rxResource()` when the source is (or should be) an Observable that needs RxJS operators (e.g.
+  wrapping an existing service method); use `httpResource()` for a plain direct HTTP GET. This was
+  chosen over `@ngrx/signals` because that library's peer dependency (`@angular/core: ^21.0.0`,
+  as of writing) doesn't yet support Angular 22 — revisit if/when it catches up.
+- Pair loading state with the shared `<app-loader>` component
+  (`frontend/src/app/shared/loader/loader.ts`): `variant="spinner"` for inline/small UI (buttons,
+  small checks), `"skeleton"` for lists/cards, `"bar"` for full-view long-running operations (e.g.
+  future plan generation).
+- `frontend/src/app/core/health.service.ts` + `frontend/src/app/app.ts` are the canonical example
+  of this whole pattern end to end (service returns an `Observable`, component wraps it in
+  `rxResource()`, template branches on `.isLoading()`/`.error()`/`.value()` and shows `<app-loader>`
+  while loading) — follow the same shape for new async data in other components.

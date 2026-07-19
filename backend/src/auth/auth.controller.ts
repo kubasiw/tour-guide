@@ -10,21 +10,24 @@ interface AuthenticatedRequest {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  public constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  register(@Body() dto: RegisterDto) {
+  public register(@Body() dto: RegisterDto): Promise<{ accessToken: string }> {
     return this.authService.register(dto.email, dto.password);
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
+  public login(@Body() dto: LoginDto): Promise<{ accessToken: string }> {
     return this.authService.login(dto.email, dto.password);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: AuthenticatedRequest) {
+  public me(@Req() req: AuthenticatedRequest): {
+    userId: string;
+    email: string;
+  } {
     return req.user;
   }
 }

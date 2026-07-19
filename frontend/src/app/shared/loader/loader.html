@@ -1,0 +1,21 @@
+@switch (variant()) {
+  @case ('skeleton') {
+    <div class="loader loader--skeleton" role="status" aria-label="Loading">
+      @for (row of skeletonRows(); track row) {
+        <div class="loader__skeleton-row"></div>
+      }
+    </div>
+  }
+  @case ('bar') {
+    <div class="loader loader--bar" role="status" aria-label="Loading">
+      <div class="loader__bar-track">
+        <div class="loader__bar-fill"></div>
+      </div>
+    </div>
+  }
+  @default {
+    <div class="loader loader--spinner" role="status" aria-label="Loading">
+      <div class="loader__spinner"></div>
+    </div>
+  }
+}

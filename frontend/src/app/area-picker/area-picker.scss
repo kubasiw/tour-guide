@@ -1,0 +1,8 @@
+@use 'variables' as v;
+
+.area-picker__map {
+  height: 500px;
+  width: 100%;
+  border-radius: v.$border-radius;
+  overflow: hidden;
+}

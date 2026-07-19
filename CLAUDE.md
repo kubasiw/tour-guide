@@ -25,8 +25,10 @@ Monorepo with two independent npm projects, no shared root package.json or works
 **Faza 1 (MVP)** — get a working skeleton first, in this order:
 
 1. ✅ Angular app + NestJS API skeletons wired together via a health check endpoint
-2. Auth (register/login, simple email+password, JWT)
-3. Area picker (map, draw polygon or radius from a point)
+2. Auth (register/login, simple email+password, JWT) — backend done; frontend `auth/` UI not
+   started yet (deliberately deferred — area picker doesn't need a logged-in user)
+3. 🚧 Area picker (map, draw polygon or radius from a point) — frontend `area-picker/` done
+   (Leaflet + leaflet-draw, mounted at the default route); no backend `AreasModule`/persistence yet
 4. Persist a plain Plan in the DB — structure only, no generation logic yet
 5. Integrate one external API (Open-Meteo) as a proof of concept
 
@@ -39,7 +41,10 @@ and saved templates.
 - **Backend = NestJS (TypeScript)**, not e.g. a non-TS stack — chosen specifically for language
   consistency with the Angular frontend and because its module/DI style mirrors Angular's.
 - **DB = PostgreSQL + Prisma** — typed queries and straightforward migrations.
-- **Map = Leaflet or MapLibre GL** — open source, no licensing cost (vs. e.g. Google Maps).
+- **Map = Leaflet + leaflet-draw** — open source, no licensing cost (vs. e.g. Google Maps); chosen
+  over MapLibre GL because it needs zero-config free OSM raster tiles (no vector tile/style source
+  to pick) and leaflet-draw already has mature polygon *and* circle(radius) drawing tools, matching
+  the area-picker requirement directly.
 - **Weather = Open-Meteo** — free, no API key required.
 - **POI / trails / monuments / restaurants = OpenStreetMap + Overpass API** — free, matches the
   no-cost/open-source constraint.
@@ -161,3 +166,15 @@ Frontend-specific:
   multiple concerns (backend `auth.service.ts`'s shared `buildToken` helper is the existing example
   to follow). Run the `simplify` skill after finishing a feature slice as the concrete check for
   this, rather than relying on manual vigilance alone.
+- **Leaflet** (`frontend/src/app/area-picker/area-picker.ts`): import as `import * as L from
+  'leaflet'; import 'leaflet-draw';` (the second is a side-effect import that attaches
+  `L.Control.Draw`/`L.Draw.*` to the `L` namespace). Gotcha: Leaflet's default marker icon paths
+  (used by leaflet-draw for polygon vertex handles) don't resolve through a bundler — fixed by
+  copying `node_modules/leaflet/dist/images` to `leaflet-images/` via an `angular.json` asset glob
+  and calling `L.Icon.Default.mergeOptions({...})` once at module scope pointing at that path;
+  also listens for `window`'s `resize` event to call `map.invalidateSize()` (registered/cleaned up
+  via `DestroyRef`), since Leaflet caches its container size at init and won't otherwise notice a
+  later layout change;
+  don't remove either half of that fix. Leaflet is imperative (not signal/template-driven), so it's
+  initialized in `afterNextRender` against a template-referenced `div` — this is the accepted
+  pattern for wrapping imperative DOM libraries in Angular, not a convention violation.

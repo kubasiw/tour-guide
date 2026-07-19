@@ -6,12 +6,12 @@
     <div>
       @if (authService.isAuthenticated()) {
         <span class="navbar-text me-3">{{ authService.me.value()?.email }}</span>
-        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="authService.logout()">
+        <button type="button" class="btn btn-outline-secondary" (click)="authService.logout()">
           Log out
         </button>
       } @else {
-        <a routerLink="/login" class="btn btn-outline-primary btn-sm me-2">Log in</a>
-        <a routerLink="/register" class="btn btn-primary btn-sm">Register</a>
+        <a routerLink="/login" class="btn btn-outline-primary me-2">Log in</a>
+        <a routerLink="/register" class="btn btn-primary">Register</a>
       }
     </div>
   </div>

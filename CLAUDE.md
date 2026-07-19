@@ -198,6 +198,27 @@ Frontend-specific:
   freeform CSS (that risks broken contrast/dark-mode/component consistency). Default/shared chrome
   (nav, auth, area-picker, activity-selector, trip-details) always stays on the base "Trail & earth"
   theme regardless of region. See `PROJECT_BRIEF.md`'s "Integracja AI" for the full note.
+- **Mobile verification**: when checking a UI change in the Browser tool, check it at *both* the
+  default desktop-ish size *and* a phone width (`resize_window` with `preset: "mobile"`, or width
+  320 for the narrowest common phones) — don't rely on whatever size the pane happened to already
+  be at. Resizing an *already-loaded* page can leave Leaflet's tile grid stale (see the Leaflet
+  gotcha below) — navigate fresh after resizing, or open a new tab already at the target size.
+  Touch targets (buttons, form controls, map controls) should be close to ~44px (2026-07-19 mobile
+  audit found no layout/overflow bugs at all, only undersized touch targets — a good sign the
+  Bootstrap-first approach is paying off, but don't assume that holds for every future screen
+  without checking). Two fixes from that audit, both easy to accidentally undo:
+  - Don't reach for `.btn-sm` on primary nav/action buttons (nav login/register/logout,
+    area-picker's confirm/clear) — it was removed everywhere it had been used, in favor of the
+    default button size (bumped via `$input-btn-padding-y` in `_variables.scss`) specifically so
+    real controls stay comfortably tappable. `.btn-sm` is still fine for genuinely secondary/dense
+    UI, just not the main actions.
+  - Leaflet adds a `.leaflet-touch` class on touch-capable devices, and its own
+    `.leaflet-touch .leaflet-bar a` rule (extra class = higher specificity) overrides a plain
+    `.leaflet-bar a` override *regardless of source order*. `_leaflet-overrides.scss` targets
+    `.leaflet-touch .leaflet-bar a` explicitly for exactly this reason — don't simplify it back to
+    a single selector. Relatedly, `angular.json`'s `styles` array lists `src/styles.scss` *last* so
+    our own SCSS loads after Bootstrap/Leaflet's CSS and wins the cascade on equal specificity
+    without `!important` — don't reorder it back without a reason.
 - **UI components**: `@ng-bootstrap/ng-bootstrap` (standalone components: `NgbAlert`, dropdown,
   modal, accordion, tooltip, ...) for interactive UI, `bootstrap-icons` (`bi bi-*` classes, loaded
   globally via `angular.json`'s `styles` array) for icons. Chosen over Angular Material to keep one

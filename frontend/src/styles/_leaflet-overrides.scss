@@ -1,0 +1,15 @@
+// Leaflet's own controls (zoom +/- and leaflet-draw's toolbar) ship at ~30px,
+// below the ~44px comfortable touch-target minimum. Bumped app-wide since a
+// bigger target doesn't hurt desktop mouse use either. Needs to load *after*
+// leaflet's own CSS in angular.json's `styles` array to win the cascade
+// without `!important`.
+// `.leaflet-touch .leaflet-bar a` (Leaflet adds `.leaflet-touch` on touch-capable
+// devices) is *more specific* than a plain `.leaflet-bar a` override and wins
+// regardless of source order — match it explicitly, not just the base selector.
+.leaflet-bar a,
+.leaflet-touch .leaflet-bar a,
+.leaflet-draw-toolbar a {
+  width: 44px;
+  height: 44px;
+  line-height: 44px;
+}

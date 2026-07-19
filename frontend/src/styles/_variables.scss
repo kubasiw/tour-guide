@@ -8,6 +8,11 @@
 $border-radius: 0.6rem;
 $primary: #2f6b4f;
 
+// Bumped from Bootstrap's default (.375rem) so buttons/inputs land closer to
+// the ~44px minimum comfortable touch-target size on mobile — verified by
+// measuring actual rendered control heights in the Browser tool, not guessed.
+$input-btn-padding-y: 0.5rem;
+
 // Not a native Bootstrap theme slot — our own warm accent, used sparingly for
 // standout calls to action (see _theme-extras.scss for the utility classes
 // built on top of it).

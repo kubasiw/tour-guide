@@ -36,7 +36,8 @@ Monorepo with two independent npm projects, no shared root package.json or works
 
 **Beyond MVP** (only after the skeleton above works): POI ingestion from Overpass, the actual
 plan-generation engine (starts as a simple rule-based algorithm, can grow later), plan editing,
-and saved templates.
+saved templates, and the AI integration described in `PROJECT_BRIEF.md`'s "Integracja AI" section
+(Claude API-authored plan narration + a tool-calling chat assistant for editing a plan).
 
 ## Key technical decisions
 
@@ -52,12 +53,18 @@ and saved templates.
   no-cost/open-source constraint.
 - Frontend/backend talk over plain HTTP; no BFF or GraphQL layer planned.
 - **Auth is not a hard gate** — this app follows the modern-SPA pattern (like Figma/Notion/Canva):
-  unauthenticated users can see and use most features (pick an area, get a generic AI overview)
+  unauthenticated users can see and use most features (pick an area, get a generic overview)
   but with reduced functionality; logging in unlocks the richer, customizable experience (choosing
   accommodation/restaurant/trail/museum/attraction/parking categories once the generator exists).
   Consequence: don't reflexively wrap new routes in `authGuard` — gate at the feature/response
   level instead, and reserve route-level gating for things that inherently require an account
-  (e.g. a future "my saved plans" list).
+  (e.g. a future "my saved plans" list, or the AI plan generator/chat below).
+- **AI = Claude API (Anthropic)** for plan narration and a chat-based plan-editing assistant — see
+  `PROJECT_BRIEF.md`'s "Integracja AI" for the full design (rule-filtered candidates + LLM narrates
+  rather than invents, tool-calling for structured edits, per-POI description caching, API key
+  server-side only in a new `AiModule`). This is genuinely gated behind login (first real use of
+  `authGuard`) — unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract)
+  to keep anonymous traffic free of API cost.
 
 ## Commands
 

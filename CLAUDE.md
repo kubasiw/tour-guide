@@ -22,7 +22,8 @@ Monorepo with two independent npm projects, no shared root package.json or works
 
 ## Roadmap
 
-**Faza 1 (MVP)** — get a working skeleton first, in this order:
+**Faza 1 (MVP)** — get a working skeleton first, in this order. ✅ All 5 steps done — the skeleton
+is complete; work now moves to "Beyond MVP" below.
 
 1. ✅ Angular app + NestJS API skeletons wired together via a health check endpoint
 2. ✅ Auth (register/login, simple email+password, JWT) — backend + frontend `auth/` both done
@@ -36,7 +37,9 @@ Monorepo with two independent npm projects, no shared root package.json or works
    (`GET /plans/:id`, `httpResource`-driven). `Area` lives inside `PlansModule`, not a separate
    `AreasModule` as the brief originally sketched — it's 1:1 with `Plan` and only ever created
    alongside it; split it out later if Areas ever need independent reuse/listing.
-5. Integrate one external API (Open-Meteo) as a proof of concept
+5. ✅ Integrate one external API (Open-Meteo) as a proof of concept — standalone `WeatherModule`
+   (`GET /weather?lat=&lng=`, no key needed, uses Node's global `fetch`), surfaced on `/plans/:id`
+   as a 5-day forecast for the plan's `Area` centroid (`areaCenter()` in `core/area.model.ts`)
 
 **Beyond MVP** (only after the skeleton above works): POI ingestion from Overpass, the actual
 plan-generation engine (starts as a simple rule-based algorithm, can grow later), plan editing,

@@ -1,0 +1,27 @@
+<div class="mt-3">
+  <h2 class="h5 mb-3">Weather forecast</h2>
+
+  @if (forecast.isLoading()) {
+    <app-loader variant="skeleton" [lines]="3" />
+  } @else if (forecast.error()) {
+    <ngb-alert type="danger" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Couldn't load the weather forecast.
+    </ngb-alert>
+  } @else if (forecast.value(); as value) {
+    <div class="d-flex flex-wrap gap-2">
+      @for (day of value.daily; track day.date) {
+        <div class="card weather-forecast__day">
+          <div class="card-body text-center p-2">
+            <div class="small text-muted">{{ day.date | date: 'EEE d.M' }}</div>
+            <i class="bi {{ weatherCodeToIcon(day.weatherCode).icon }} fs-3 my-1"></i>
+            <div class="small">{{ weatherCodeToIcon(day.weatherCode).label }}</div>
+            <div>{{ day.tempMaxC | number: '1.0-0' }}° / {{ day.tempMinC | number: '1.0-0' }}°</div>
+            <div class="small text-muted">
+              <i class="bi bi-droplet-fill me-1"></i>{{ day.precipitationMm | number: '1.0-1' }} mm
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

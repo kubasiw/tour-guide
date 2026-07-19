@@ -10,5 +10,9 @@
         <app-area-summary [area]="value.area" />
       </div>
     </div>
+
+    @if (center(); as point) {
+      <app-weather-forecast [lat]="point.lat" [lng]="point.lng" />
+    }
   }
 </div>

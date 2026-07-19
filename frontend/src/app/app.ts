@@ -1,12 +1,13 @@
 import { Component, inject, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterOutlet } from '@angular/router';
+import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { HealthService } from './core/health.service';
 import { Loader } from './shared/loader/loader';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Loader],
+  imports: [RouterOutlet, Loader, NgbAlert],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })

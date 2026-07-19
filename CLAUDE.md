@@ -123,3 +123,41 @@ Frontend-specific:
   of this whole pattern end to end (service returns an `Observable`, component wraps it in
   `rxResource()`, template branches on `.isLoading()`/`.error()`/`.value()` and shows `<app-loader>`
   while loading) — follow the same shape for new async data in other components.
+- **Styling**: no inline `style="..."` in templates — enforced by
+  `@angular-eslint/template/no-inline-styles` (lint error, not just convention). Use Bootstrap
+  utility classes for layout/spacing/typography where Bootstrap already provides them (`container`,
+  `d-flex`, `text-danger`, `mb-3`, ...); put anything custom in the component's `.scss` file,
+  pulling shared values from `frontend/src/styles/_variables.scss` and shared patterns from
+  `_mixins.scss` — both importable by bare name (`@use 'variables' as v;` / `@use 'mixins' as m;`)
+  thanks to `stylePreprocessorOptions.includePaths` in `angular.json`, no relative-path chains.
+  Don't duplicate a color/spacing/breakpoint value that already has a variable; add a mixin instead
+  of copy-pasting a rule block (see `loader.scss`'s `@include m.flex-center`). Bootstrap itself is
+  customized by setting its Sass variables (e.g. `$border-radius`) in `_variables.scss` *before*
+  it's `@import`ed in `styles.scss` — Bootstrap 5.3's Sass still uses classic `@import` internally
+  (not `@use`), so overrides must use plain variable assignment + `@import`, not `@use ... with`.
+  Expect (and ignore) Dart Sass's "`@import` rules are deprecated" build warnings until Bootstrap
+  migrates its own source — this is a known, ecosystem-wide, currently-unavoidable warning, not a
+  bug in this repo. Current variable/mixin values are placeholders; real design tokens land once
+  the app's visual design is decided.
+- **UI components**: `@ng-bootstrap/ng-bootstrap` (standalone components: `NgbAlert`, dropdown,
+  modal, accordion, tooltip, ...) for interactive UI, `bootstrap-icons` (`bi bi-*` classes, loaded
+  globally via `angular.json`'s `styles` array) for icons. Chosen over Angular Material to keep one
+  coherent design system (Bootstrap) instead of two competing ones layered on top of each other.
+  Gotcha: several ng-bootstrap components (e.g. `NgbAlert`'s close button) use `$localize` tagged
+  strings, which throws `ReferenceError: $localize is not defined` unless `@angular/localize/init`
+  is loaded — already added to `angular.json`'s `polyfills` array, so no action needed for new
+  ng-bootstrap usage, just don't remove it. This app is zoneless by default (no `zone.js`
+  dependency) — don't add `zone.js` back to `polyfills` unless a real reason emerges.
+- **Dumb vs. smart components**: presentational ("dumb") components — like
+  `shared/loader/loader.ts` — take `input()`s and emit `output()`s only; no `inject()` of services,
+  no direct HTTP/resource calls, no app-specific business logic. They live under `shared/` (or a
+  future `ui/`) and are the default whenever a piece of markup/behavior repeats across views.
+  Container ("smart") components own state — they `inject()` services, hold
+  `resource()`/`rxResource()` calls — and pass data down to dumb components via inputs (see `App`
+  passing loading state to `<app-loader>`). When a component starts doing both (owning state *and*
+  being reused verbatim with different data), that's the signal to split it.
+- **Avoid duplicated/bloated logic**: extract repeated logic into a helper function, a shared
+  service method, or a dumb component rather than copy-pasting or letting one method grow to handle
+  multiple concerns (backend `auth.service.ts`'s shared `buildToken` helper is the existing example
+  to follow). Run the `simplify` skill after finishing a feature slice as the concrete check for
+  this, rather than relying on manual vigilance alone.

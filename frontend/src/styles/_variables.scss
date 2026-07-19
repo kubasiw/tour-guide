@@ -1,0 +1,8 @@
+// Design tokens for this app. Values here are placeholders until the app's
+// visual design is decided — replace them, don't add new one-off colors/spacing
+// elsewhere once real branding lands.
+
+// Bootstrap variable overrides — must be set *before* `@import "bootstrap"` in
+// styles.scss, since Bootstrap's own Sass uses classic `@import` (shared global
+// scope), not `@use`. See https://getbootstrap.com/docs/5.3/customize/sass/
+$border-radius: 0.6rem;

@@ -1,11 +1,13 @@
-<main>
+<main class="container py-4">
   <h1>{{ title() }}</h1>
   @if (health.isLoading()) {
     <app-loader variant="spinner" />
   } @else if (health.error()) {
-    <p>Backend status: error</p>
+    <ngb-alert type="danger" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Backend status: error
+    </ngb-alert>
   } @else {
-    <p>Backend status: {{ health.value()?.status }}</p>
+    <p><i class="bi bi-check-circle-fill text-success me-2"></i>Backend status: {{ health.value()?.status }}</p>
   }
 </main>
 

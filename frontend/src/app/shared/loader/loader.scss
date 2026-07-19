@@ -1,3 +1,5 @@
+@use 'mixins' as m;
+
 .loader {
   display: flex;
   width: 100%;
@@ -5,8 +7,7 @@
 
 // Spinner: small inline indicator (buttons, inline checks).
 .loader--spinner {
-  justify-content: center;
-  align-items: center;
+  @include m.flex-center;
   padding: 0.5rem;
 }
 

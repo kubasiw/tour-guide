@@ -108,6 +108,40 @@ export class PlanGeneratorService {
     await this.prisma.planItem.delete({ where: { id: itemId } });
   }
 
+  public async reorderItems(
+    planId: string,
+    itemIds: string[],
+  ): Promise<PlanItemWithPoi[]> {
+    await this.plansService.findOne(planId);
+
+    const existing = await this.prisma.planItem.findMany({
+      where: { planId },
+      select: { id: true },
+    });
+    const existingIds = new Set(existing.map((item) => item.id));
+    const requestedIds = new Set(itemIds);
+
+    if (
+      existingIds.size !== requestedIds.size ||
+      ![...existingIds].every((id) => requestedIds.has(id))
+    ) {
+      throw new BadRequestException(
+        "itemIds must match the plan's current items exactly",
+      );
+    }
+
+    await this.prisma.$transaction(
+      itemIds.map((id, index) =>
+        this.prisma.planItem.update({
+          where: { id },
+          data: { order: index + 1 },
+        }),
+      ),
+    );
+
+    return this.findItems(planId);
+  }
+
   private selectBalanced(
     candidates: Poi[],
     types: PoiType[],

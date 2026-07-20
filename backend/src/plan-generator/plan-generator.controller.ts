@@ -6,9 +6,11 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { AddPlanItemDto } from './dto/add-plan-item.dto';
+import { ReorderItemsDto } from './dto/reorder-items.dto';
 import { PlanGeneratorService } from './plan-generator.service';
 import { PlanItemWithPoi } from './plan-generator.types';
 import { Poi } from '../poi/poi.types';
@@ -46,5 +48,13 @@ export class PlanGeneratorController {
     @Param('itemId') itemId: string,
   ): Promise<void> {
     return this.planGeneratorService.removeItem(planId, itemId);
+  }
+
+  @Patch('items/reorder')
+  public reorderItems(
+    @Param('planId') planId: string,
+    @Body() dto: ReorderItemsDto,
+  ): Promise<PlanItemWithPoi[]> {
+    return this.planGeneratorService.reorderItems(planId, dto.itemIds);
   }
 }

@@ -48,4 +48,10 @@ export class PlanService {
   public removeItem(planId: string, itemId: string): Observable<void> {
     return this.http.delete<void>(`${API_BASE_URL}/plans/${planId}/items/${itemId}`);
   }
+
+  public reorderItems(planId: string, itemIds: string[]): Observable<PlanItemWithPoi[]> {
+    return this.http.patch<PlanItemWithPoi[]>(`${API_BASE_URL}/plans/${planId}/items/reorder`, {
+      itemIds,
+    });
+  }
 }

@@ -156,10 +156,37 @@ is complete; work now moves to "Beyond MVP" below.
    `authGuard` anywhere in the app; a "Moje plany" nav link shows only when logged in.
    **Deliberately not doing:** a return-url round-trip after a forced login — landing on `/` and
    clicking "Moje plany" again is an accepted minor rough edge, not worth the plumbing yet.
-7. Plan editing — reorder `PlanItem`s (add/remove is already done, see step 3 above). Needs a new
-   `PATCH` endpoint plus `@angular/cdk`'s drag-drop (not installed yet) and a new ordered-list UI —
-   today `poi-picker.html` only renders the browsable candidates grid with a selected-state badge,
-   there's no view of "your selected items in order" anywhere yet.
+7. ✅ **Plan editing — reorder `PlanItem`s** (add/remove was already done, see step 3 above).
+   `PlanGeneratorService.reorderItems(planId, itemIds)` takes the full new id order, validates it's
+   exactly the plan's current item-id set (`BadRequestException` on any mismatch — guards against a
+   stale client, e.g. another tab having added/removed an item meanwhile), then `$transaction`s an
+   `order = index + 1` update per id; `PATCH /plans/:planId/items/reorder`. Frontend: first use of
+   **`@angular/cdk`** (`DragDropModule`/`cdkDropList`/`cdkDrag`/`cdkDragHandle`) anywhere in the app
+   — installed fresh for this step. `poi-picker.html` gained a new "Twój plan" ordered-list section
+   (Bootstrap `list-group`, drag handle + `POI_TYPE_ICONS`/`POI_TYPE_COLORS` + name + a small
+   `btn-outline-secondary btn-sm` remove button per row) above the existing candidates grid — the
+   first view anywhere showing "your selected items in their current order," not just a selected
+   badge overlay on the browsable grid. `PoiPicker` gained a local writable `orderedItems =
+   signal<PlanItemWithPoi[]>([])`, synced from the `items` resource via a constructor `effect()` —
+   needed because CDK's `cdkDropList` requires a mutable array it can reorder for immediate drag
+   feedback, while `items` itself stays the server-fetched source of truth. `onDrop()` optimistically
+   reorders `orderedItems` locally, PATCHes the new order, and on success calls `items.reload()`
+   (which re-syncs `orderedItems` via the effect); on failure it reverts `orderedItems` to the last
+   known-good `items.value()` and surfaces the error via the existing `toggleError` signal. The list
+   row's remove button reuses the existing `toggle(poi)` method (already handles the
+   "selected → remove" branch) rather than adding a new method. **Gotcha hit during verification:**
+   installing a new npm dependency (`@angular/cdk`) while `ng serve` was already running left the new
+   component's template completely missing from the rendered page with zero console errors — Vite's
+   dependency pre-bundling cache doesn't pick up a new package.json/lockfile entry on its own; a full
+   dev-server restart (not just HMR) was required, after which Vite logged "Re-optimizing
+   dependencies because lockfile has changed" and the section rendered correctly. Worth remembering
+   for any future new-dependency addition: restart `ng serve` afterward, don't assume HMR covers it.
+   Verified end-to-end: curl `PATCH .../items/reorder` with a reversed id list + persisted-order
+   check, both mismatch/incomplete `itemIds` 400 cases, then in-browser via
+   `window.ng.getComponent(el).onDrop({previousIndex, currentIndex})` (same technique established
+   earlier for untrustworthy drag simulation — see the Leaflet vertex-drag note above) confirmed
+   against a fresh `GET .../items`, plus a real click on the list's remove button — all at both
+   mobile and desktop width.
 8. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
@@ -474,6 +501,16 @@ Frontend-specific:
   is loaded — already added to `angular.json`'s `polyfills` array, so no action needed for new
   ng-bootstrap usage, just don't remove it. This app is zoneless by default (no `zone.js`
   dependency) — don't add `zone.js` back to `polyfills` unless a real reason emerges.
+- **Drag-and-drop**: `@angular/cdk`'s `DragDropModule` (`cdkDropList`/`cdkDrag`/`cdkDragHandle`),
+  added for `PlanItem` reordering (`plans/poi-picker/`) — the only CDK usage so far, standalone
+  directives imported directly into the component that needs them, no global registration. Needs a
+  local writable `signal()` synced from the backing `resource()`/`rxResource()` via an `effect()`
+  (see `PoiPicker.orderedItems`) since CDK needs a mutable array to reorder for live drag feedback,
+  while the resource itself stays the fetched-from-server source of truth — reload the resource
+  after a successful persist to reconcile, revert the local signal on failure. **Gotcha:** adding a
+  new npm dependency while `ng serve` is already running isn't picked up by Vite's dependency
+  pre-bundling cache/HMR — restart the dev server after `npm install`ing anything new, don't assume
+  the running server will notice on its own.
 - **Dumb vs. smart components**: presentational ("dumb") components — like
   `shared/loader/loader.ts` — take `input()`s and emit `output()`s only; no `inject()` of services,
   no direct HTTP/resource calls, no app-specific business logic. They live under `shared/` (or a

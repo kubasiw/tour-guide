@@ -10,6 +10,7 @@ export const routes: Routes = [
   { path: '', component: AreaPicker },
   { path: 'login', component: Login },
   { path: 'register', component: Register },
+  { path: 'plans/:id/area', component: AreaPicker },
   { path: 'plans/:id/activities', component: ActivitySelector },
   { path: 'plans/:id/trip-details', component: TripDetails },
   { path: 'plans/:id', component: PlanDetail },

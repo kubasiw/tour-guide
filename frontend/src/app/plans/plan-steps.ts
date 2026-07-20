@@ -4,9 +4,16 @@ import { Plan } from './plan.model';
 export function buildPlanSteps(
   plan: Plan | undefined,
   planId: string,
-  current: 'activities' | 'trip-details',
+  current: 'area' | 'activities' | 'trip-details',
 ): StepperStep[] {
   return [
+    {
+      label: 'Obszar',
+      description: 'Zaznacz obszar na mapie.',
+      routerLink: ['/plans', planId, 'area'],
+      completed: plan !== undefined,
+      current: current === 'area',
+    },
     {
       label: 'Aktywności',
       description: 'Zaznacz, co Cię interesuje w tej okolicy.',

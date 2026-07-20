@@ -114,13 +114,23 @@ is complete; work now moves to "Beyond MVP" below.
    unnamed OSM features, e.g. a bare `tourism=trailhead` node, are now silently dropped); existing
    `"Unnamed POI"` rows were manually flushed from the dev DB, same one-off-cleanup precedent as the
    nightlife fix.
-5. **Editable `Area` + 3-step stepper** (agreed 2026-07-20, bigger — plan it properly rather than
-   bolting it on): extend `shared/stepper/` to include `area-picker` as a real step 1, not just a
-   visual label — clicking back to "Obszar" from `activities`/`trip-details` should show and let you
-   revise the actual shape you drew, not a blank new map. Needs a new `PATCH` for `Area.geometry`
-   (today it's write-once, set only inside `POST /plans`'s creation transaction — `PlansService` has
-   no update path for it at all) and `area-picker` learning to load an existing `Plan` and pre-draw
-   its already-confirmed polygon/circle on the Leaflet map instead of always starting blank.
+5. ✅ **Editable `Area` + 3-step stepper**: `shared/stepper/` now includes `area-picker` as a real
+   step 1 — `PATCH /plans/:id/area` (`PlansService.updateArea`, a Prisma *nested* update through
+   the `Plan.area` relation: `{ data: { area: { update: { geometry: ... } } } }`, since `Area` is
+   its own related row via `planId @unique`, not a plain `Plan` column) plus a new
+   `plans/:id/area` route reusing `AreaPicker` in "edit" mode (`id` is now an optional `input()` —
+   unbound on the original `''` create route). Pre-drawing the existing shape adds the Leaflet
+   layer into the *same* `drawnItems` `FeatureGroup` the edit control already watches — that's what
+   makes leaflet-draw's native vertex-drag editing work on it for free, no custom edit UI needed;
+   this also meant listening for `L.Draw.Event.EDITED` for the first time (previously only
+   `CREATED` was handled — dragging an existing shape's vertices is a different event, and without
+   this listener the drag would look like it worked but never update the signal `confirm()` reads).
+   The stepper only renders in edit mode (`id()` present) — in pure create mode there's no `Plan`
+   yet for "Aktywności"/"Termin" to be meaningfully locked/completed against, so 2 dead stub nodes
+   would be noise. **Deliberately not doing:** cascading resets — editing an already-generated
+   plan's area doesn't reset `Plan.status`, activities, trip details, or touch existing
+   `PlanItem`s, even though they may now be geographically stale. Auto-resetting user data as a
+   side effect of an edit is a bigger, separate product decision nobody's asked for yet.
 6. Plan editing (reorder `PlanItem`s — add/remove is already done, see step 3 above) +
    `my-plans/` (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, since "my plans" only makes sense for a logged-in user; a natural candidate

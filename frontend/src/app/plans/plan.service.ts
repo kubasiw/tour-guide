@@ -25,6 +25,10 @@ export class PlanService {
     return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}`, patch);
   }
 
+  public updateArea(id: string, area: Area): Observable<Plan> {
+    return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}/area`, area);
+  }
+
   public getCandidates(id: string): Observable<Poi[]> {
     return this.http.get<Poi[]>(`${API_BASE_URL}/plans/${id}/candidates`);
   }

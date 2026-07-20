@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AreaDto } from './dto/area.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
 import { Area } from './area.type';
@@ -62,6 +63,24 @@ export class PlansService {
         ...(dto.durationDays !== undefined && {
           durationDays: dto.durationDays,
         }),
+      },
+      include: { area: true },
+    });
+
+    return this.toPlanWithArea(plan);
+  }
+
+  public async updateArea(id: string, dto: AreaDto): Promise<PlanWithArea> {
+    await this.findOne(id);
+
+    const plan = await this.prisma.plan.update({
+      where: { id },
+      data: {
+        area: {
+          update: {
+            geometry: dto as unknown as Prisma.InputJsonValue,
+          },
+        },
       },
       include: { area: true },
     });

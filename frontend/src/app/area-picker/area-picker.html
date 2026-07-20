@@ -1,4 +1,14 @@
 <div class="area-picker">
+  @if (plan.error()) {
+    <ngb-alert type="danger" class="mb-3" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Plan nie został znaleziony.
+    </ngb-alert>
+  }
+
+  @if (steps(); as stepList) {
+    <app-stepper [steps]="stepList" />
+  }
+
   <form class="d-flex gap-2 mb-3" (submit)="onSearchSubmit($event, searchInput.value)">
     <input
       #searchInput
@@ -40,6 +50,8 @@
           >
             @if (confirming()) {
               <app-loader variant="spinner" />
+            } @else if (id()) {
+              <i class="bi bi-check2-circle me-1"></i>Zapisz zmiany
             } @else {
               <i class="bi bi-check2-circle me-1"></i>Zatwierdź obszar
             }

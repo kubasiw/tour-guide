@@ -50,7 +50,15 @@ is complete; work now moves to "Beyond MVP" below.
    `/plans/:id` (`PlanDetail`, now also rendering the captured activities/dates). `Plan` extended
    with `activities: string[]` (Postgres array, not a separate `Activity` model — see the note
    below), `startDate: DateTime?`, `durationDays: Int?`.
-2. `PoiModule` — ingest/cache POI data from Overpass/OSM for a given `Area`.
+2. ✅ `PoiModule` — ingest/cache POI data from Overpass/OSM. `GET /pois?south=&west=&north=&east=`
+   (bbox, not exact-polygon — matches how `WeatherModule` takes a plain `lat`/`lng` rather than an
+   `Area`, decoupled from `PlansModule` since a POI isn't 1:1 with any one plan). Cache-first: if
+   any `Poi` rows already fall inside the requested bbox, return those; only on a miss does it
+   query Overpass, upsert results (deduped by `osmId`), and return them — see the note below for
+   this strategy's known limitation. Queries OSM `node` elements only against a small curated tag
+   map (`backend/src/poi/overpass-tags.ts`) covering the brief's 5 `PoiType`s (`trail`, `monument`,
+   `restaurant`, `shelter`, `accommodation`) — `way`/`relation` geometries (e.g. real trail paths)
+   are deferred; a `tourism=trailhead` node is used as a `trail` proxy for now.
 3. `PlanGeneratorModule` — starts as a simple rule-based algorithm combining `Area` + `Activity`
    selections + `WeatherModule` forecast into a concrete list of `PlanItem`s (no AI yet).
 4. Plan editing (reorder/add/remove `PlanItem`s) + `my-plans/` (saved templates, listing a user's
@@ -67,6 +75,22 @@ is complete; work now moves to "Beyond MVP" below.
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history
 around the "step 4" clarification).
+
+`Poi` also deviates from the brief's data model: no `aiDescription`/`aiDescriptionGeneratedAt`
+columns yet (those cache LLM-written descriptions — pointless before `AiModule` exists to write
+them; add via a migration when that step needs them), and `type` is a plain `String` validated
+against an app-level `POI_TYPES` const (`backend/src/poi/poi.types.ts`), not a Prisma `enum` — same
+pattern as `Plan.status`/`activities`, for consistency. **Known limitation of the cache-first-by-
+bbox strategy:** it checks "does *any* cached POI fall in this bbox," not "has this exact region
+been ingested" — a bbox that partly overlaps an already-cached area but extends into fresh
+territory won't trigger a fetch for the new part, and a bbox with genuinely zero matching POIs will
+re-hit Overpass on every request. No TTL/staleness tracking either. Accepted for this first pass;
+revisit if real usage shows it matters. **Gotcha found while building this:** Overpass's public
+server (`overpass-api.de`) responds `406 Not Acceptable` to requests with no `User-Agent` header —
+`curl` sends one by default so this only shows up with Node's `fetch` (which doesn't); `poi.service.
+ts` sets an explicit `User-Agent`. Its shared public instance can also return a "server too busy"
+error under rapid repeated testing from the same IP — a real `BadGatewayException`, not a bug, just
+space out manual verification requests.
 
 `activities` deliberately deviates from `PROJECT_BRIEF.md`'s "wstępny" data model, which proposes a
 separate `Activity` dictionary model with a many-to-many relation to `Plan` — same judgment call
@@ -138,6 +162,26 @@ npm run lint           # ng lint (angular-eslint + typescript-eslint, type-check
 npm run format         # prettier --write over src/**/*.{ts,html,scss}
 ```
 
+## Verification workflow
+
+Always run `npm run lint`, `npm run build`, `npm test` in whichever package(s) a change touches —
+cheap, catches real regressions, no reason to ever skip. Manual browser verification is the
+expensive part (many tool calls, occasional flakiness in this environment) — scope it to the actual
+risk instead of a full click-through after every step (revisited 2026-07-20 after several sessions
+of testing every small change end-to-end regardless of size):
+- Backend-only change with no UI surface: a targeted `curl` against the changed endpoint is enough
+  — skip the browser.
+- Docs-only change: skip both manual and browser verification entirely.
+- A brand-new user-facing screen/flow: do one full walkthrough — this is genuinely where
+  integration bugs hide that lint/tests can't catch (e.g. the Leaflet sprite-icon regression caught
+  by eye in the activity-selector/trip-details step, invisible to any automated check).
+- A later change to a screen that's already proven working: verify only the part that changed,
+  don't re-walk the whole flow from scratch.
+- Prefer light `read_page`/`javascript_tool` checks (DOM state, `getComputedStyle`,
+  `window.location.href`) over screenshot-driven verification unless the change has real visual/CSS
+  risk — screenshots have been slow and occasionally flaky in this environment, and add cost
+  without proportional benefit for purely structural checks.
+
 ## Architecture notes
 
 - Backend follows Nest's module-per-domain pattern; new domains get their own
@@ -153,8 +197,8 @@ npm run format         # prettier --write over src/**/*.{ts,html,scss}
   `plan-chat/`, `my-plans/` — the rest don't exist yet, add them in the order in the Roadmap above.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
   (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
-  step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅. Not built yet:
-  `PoiModule`, `PlanGeneratorModule`, `AiModule`, `PlanChatModule` — build them in that order (see
+  step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅. Not
+  built yet: `PlanGeneratorModule`, `AiModule`, `PlanChatModule` — build them in that order (see
   Roadmap above).
 - Frontend talks to backend over plain HTTP (`HttpClient`); the base URL is the shared
   `API_BASE_URL` constant in `frontend/src/app/core/api-base-url.ts` (hardcoded to

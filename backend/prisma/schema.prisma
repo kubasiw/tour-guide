@@ -38,3 +38,16 @@ model Area {
   geometry  Json
   createdAt DateTime @default(now())
 }
+
+model Poi {
+  id           String   @id @default(uuid())
+  osmId        String   @unique
+  name         String
+  type         String
+  lat          Float
+  lng          Float
+  openingHours String?
+  sourceData   Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

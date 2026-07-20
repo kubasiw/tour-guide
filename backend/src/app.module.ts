@@ -5,6 +5,7 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
 import { PlansModule } from './plans/plans.module';
+import { PoiModule } from './poi/poi.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { WeatherModule } from './weather/weather.module';
 
@@ -16,6 +17,7 @@ import { WeatherModule } from './weather/weather.module';
     AuthModule,
     PlansModule,
     WeatherModule,
+    PoiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

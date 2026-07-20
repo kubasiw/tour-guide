@@ -5,7 +5,8 @@
     </span>
     <div>
       @if (authService.isAuthenticated()) {
-        <span class="navbar-text me-3">{{ authService.me.value()?.email }}</span>
+        <a routerLink="/my-plans" class="btn btn-outline-secondary me-2">Moje plany</a>
+        <span class="navbar-text me-3 d-none d-sm-inline">{{ authService.me.value()?.email }}</span>
         <button type="button" class="btn btn-outline-secondary" (click)="authService.logout()">
           Log out
         </button>

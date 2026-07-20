@@ -1,12 +1,9 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { CurrentUser, type CurrentUserPayload } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-
-interface AuthenticatedRequest {
-  user: { userId: string; email: string };
-}
 
 @Controller('auth')
 export class AuthController {
@@ -24,10 +21,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  public me(@Req() req: AuthenticatedRequest): {
-    userId: string;
-    email: string;
-  } {
-    return req.user;
+  public me(@CurrentUser() user: CurrentUserPayload): CurrentUserPayload {
+    return user;
   }
 }

@@ -21,6 +21,10 @@ export class PlanService {
     return this.http.post<Plan>(`${API_BASE_URL}/plans`, { area });
   }
 
+  public listMine(): Observable<Plan[]> {
+    return this.http.get<Plan[]>(`${API_BASE_URL}/plans/mine`);
+  }
+
   public update(id: string, patch: UpdatePlanPayload): Observable<Plan> {
     return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}`, patch);
   }

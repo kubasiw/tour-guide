@@ -131,11 +131,30 @@ is complete; work now moves to "Beyond MVP" below.
    plan's area doesn't reset `Plan.status`, activities, trip details, or touch existing
    `PlanItem`s, even though they may now be geographically stale. Auto-resetting user data as a
    side effect of an edit is a bigger, separate product decision nobody's asked for yet.
-6. Plan editing (reorder `PlanItem`s — add/remove is already done, see step 3 above) +
-   `my-plans/` (saved templates, listing a user's plans) — the first feature that inherently
-   requires an account, since "my plans" only makes sense for a logged-in user; a natural candidate
-   for finally applying the already-built `authGuard` to a route.
-7. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
+6. ✅ **`my-plans/`** (saved templates, listing a user's plans) — the first feature that inherently
+   requires an account, split out from "plan editing" below since the two don't depend on each
+   other (reorder needs no auth, `my-plans/` needs no reorder) and each is substantial on its own.
+   `GET /plans/mine` (`JwtAuthGuard`-protected) lists the logged-in user's plans, newest first;
+   `POST /plans` (still unauthenticated per "Auth is not a hard gate" — anonymous users keep
+   creating plans exactly as before) now runs behind a new `OptionalJwtAuthGuard`
+   (`backend/src/auth/guards/`) that never rejects a missing/invalid token but still attaches
+   `req.user` when one is present, so a plan created while logged in gets `Plan.userId` set and
+   shows up in `my-plans/` later — zero migrations needed, `Plan.userId`/`User.plans` already
+   existed in the schema, unused until now. Added a shared `@CurrentUser()` param decorator
+   (`backend/src/auth/current-user.decorator.ts`) since this is the second endpoint reading the
+   authenticated user (`/auth/me` was refactored to use it too, dropping its old locally-declared
+   `AuthenticatedRequest` interface). **Gotcha:** `@Get('mine')` must be declared *before*
+   `@Get(':id')` in `PlansController` — Nest/Express match literal routes in declaration order, so
+   `GET /plans/mine` would otherwise be swallowed by `:id` treating `"mine"` as a plan id. Frontend:
+   `{ path: 'my-plans', canActivate: [authGuard] }` is the first real use of the already-built
+   `authGuard` anywhere in the app; a "Moje plany" nav link shows only when logged in.
+   **Deliberately not doing:** a return-url round-trip after a forced login — landing on `/` and
+   clicking "Moje plany" again is an accepted minor rough edge, not worth the plumbing yet.
+7. Plan editing — reorder `PlanItem`s (add/remove is already done, see step 3 above). Needs a new
+   `PATCH` endpoint plus `@angular/cdk`'s drag-drop (not installed yet) and a new ordered-list UI —
+   today `poi-picker.html` only renders the browsable candidates grid with a selected-state badge,
+   there's no view of "your selected items in order" anywhere yet.
+8. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
    gated behind login, for cost control this time (anonymous users get a non-LLM overview instead).
@@ -144,7 +163,7 @@ is complete; work now moves to "Beyond MVP" below.
    ships earlier in step 4 above via free Nominatim geocoding, but the *description* needs the LLM
    this step builds, and inherits its login-gating; don't build an early/separate AI call just for
    this one field.
-8. Adaptive per-region theming on the generated plan view, once AI can classify an area's
+9. Adaptive per-region theming on the generated plan view, once AI can classify an area's
    character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
@@ -232,10 +251,10 @@ type-balanced but not distance-sorted from the area's center).
 - **AI = Claude API (Anthropic)** for plan narration and a chat-based plan-editing assistant — see
   `PROJECT_BRIEF.md`'s "Integracja AI" for the full design (rule-filtered candidates + LLM narrates
   rather than invents, tool-calling for structured edits, per-POI description caching, API key
-  server-side only in a new `AiModule`). This is genuinely gated behind login (one of the first real
-  uses of `authGuard`, alongside `my-plans/` — see the Roadmap below for which comes first) —
-  unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract) to keep
-  anonymous traffic free of API cost.
+  server-side only in a new `AiModule`). This is genuinely gated behind login — `my-plans/` (see the
+  Roadmap above) already established the `authGuard`/`JwtAuthGuard`/`@CurrentUser()` pattern this
+  reuses — unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract) to
+  keep anonymous traffic free of API cost.
 
 ## Commands
 
@@ -302,7 +321,7 @@ of testing every small change end-to-end regardless of size):
 - The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/` ✅,
   `area-picker/` ✅, `activity-selector/` ✅, `trip-details/` ✅, `plan-view/` (currently `plans/
   plan-detail/`, a minimal stand-in — may get renamed/expanded once real generation exists),
-  `plan-chat/`, `my-plans/` — the rest don't exist yet, add them in the order in the Roadmap above.
+  `plan-chat/`, `my-plans/` ✅ — the rest don't exist yet, add them in the order in the Roadmap above.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
   (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
   step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅,
@@ -419,6 +438,12 @@ Frontend-specific:
     text glyphs, safe to resize) and leaving `.leaflet-draw-toolbar a` at Leaflet's native size.
     Don't re-widen the override to cover sprite-based Leaflet controls without also rescaling
     `background-size`/`background-position` per icon.
+  - **Real regression caught (2026-07-20, `my-plans/` step):** adding a third item ("Moje plany")
+    to the authenticated nav (`app.html`) overflowed at 320-395px — the nav previously only ever
+    had to fit two items (email + Log out) at that width. Fixed by hiding the email span below the
+    `sm` breakpoint (`d-none d-sm-inline`) — least essential info at that width, the user already
+    knows they're logged in from context. A reminder that adding *any* nav item, not just wide
+    ones, is worth a mobile-width check — this one wasn't obviously risky until it was measured.
 - **UI components**: `@ng-bootstrap/ng-bootstrap` (standalone components: `NgbAlert`, dropdown,
   modal, accordion, tooltip, ...) for interactive UI, `bootstrap-icons` (`bi bi-*` classes, loaded
   globally via `angular.json`'s `styles` array) for icons. Chosen over Angular Material to keep one

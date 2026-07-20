@@ -22,10 +22,13 @@ type PlanRecord = Prisma.PlanGetPayload<{ include: { area: true } }>;
 export class PlansService {
   public constructor(private readonly prisma: PrismaService) {}
 
-  public async create(dto: CreatePlanDto): Promise<PlanWithArea> {
+  public async create(
+    dto: CreatePlanDto,
+    userId?: string,
+  ): Promise<PlanWithArea> {
     const plan = await this.prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-        const created = await tx.plan.create({ data: {} });
+        const created = await tx.plan.create({ data: { userId } });
         const area = await tx.area.create({
           data: {
             planId: created.id,
@@ -37,6 +40,18 @@ export class PlansService {
     );
 
     return this.toPlanWithArea(plan);
+  }
+
+  public async findAllForUser(userId: string): Promise<PlanWithArea[]> {
+    const plans = await this.prisma.plan.findMany({
+      where: { userId },
+      include: { area: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return plans
+      .filter((plan) => plan.area !== null)
+      .map((plan) => this.toPlanWithArea(plan));
   }
 
   public async findOne(id: string): Promise<PlanWithArea> {

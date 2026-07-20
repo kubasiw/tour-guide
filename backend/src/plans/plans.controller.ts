@@ -1,4 +1,18 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  CurrentUser,
+  type CurrentUserPayload,
+} from '../auth/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { AreaDto } from './dto/area.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
@@ -8,9 +22,21 @@ import { PlansService, PlanWithArea } from './plans.service';
 export class PlansController {
   public constructor(private readonly plansService: PlansService) {}
 
+  @UseGuards(OptionalJwtAuthGuard)
   @Post()
-  public create(@Body() dto: CreatePlanDto): Promise<PlanWithArea> {
-    return this.plansService.create(dto);
+  public create(
+    @Body() dto: CreatePlanDto,
+    @CurrentUser() user?: CurrentUserPayload,
+  ): Promise<PlanWithArea> {
+    return this.plansService.create(dto, user?.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('mine')
+  public findMine(
+    @CurrentUser() user: CurrentUserPayload,
+  ): Promise<PlanWithArea[]> {
+    return this.plansService.findAllForUser(user.userId);
   }
 
   @Get(':id')

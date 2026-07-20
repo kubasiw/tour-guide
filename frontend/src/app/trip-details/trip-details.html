@@ -1,0 +1,46 @@
+<div class="container py-4 narrow-form">
+  <h1 class="h3 mb-3">Termin i długość pobytu</h1>
+
+  @if (errorMessage(); as message) {
+    <ngb-alert type="danger" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+    </ngb-alert>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="mb-3">
+      <label for="startDate" class="form-label">Data przyjazdu</label>
+      <input
+        id="startDate"
+        type="date"
+        class="form-control"
+        formControlName="startDate"
+        [attr.min]="today"
+        [class.is-invalid]="form.controls.startDate.invalid && form.controls.startDate.touched"
+      />
+      <div class="invalid-feedback">Podaj datę przyjazdu.</div>
+    </div>
+
+    <div class="mb-3">
+      <label for="durationDays" class="form-label">Liczba dni</label>
+      <input
+        id="durationDays"
+        type="number"
+        class="form-control"
+        formControlName="durationDays"
+        min="1"
+        max="30"
+        [class.is-invalid]="form.controls.durationDays.invalid && form.controls.durationDays.touched"
+      />
+      <div class="invalid-feedback">Podaj liczbę dni od 1 do 30.</div>
+    </div>
+
+    @if (submitting()) {
+      <app-loader variant="spinner" />
+    } @else {
+      <button type="submit" class="btn btn-primary">
+        Dalej<i class="bi bi-arrow-right ms-1"></i>
+      </button>
+    }
+  </form>
+</div>

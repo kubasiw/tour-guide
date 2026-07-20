@@ -66,7 +66,7 @@ export class AreaPicker {
 
     this.planService.create(area).subscribe({
       next: (plan) => {
-        void this.router.navigate(['/plans', plan.id]);
+        void this.router.navigate(['/plans', plan.id, 'activities']);
       },
       error: (err: unknown) => {
         this.confirming.set(false);

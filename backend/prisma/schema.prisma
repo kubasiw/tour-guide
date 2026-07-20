@@ -20,12 +20,15 @@ model User {
 }
 
 model Plan {
-  id        String   @id @default(uuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  status    String   @default("draft")
-  area      Area?
-  createdAt DateTime @default(now())
+  id           String    @id @default(uuid())
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+  status       String    @default("draft")
+  area         Area?
+  activities   String[]  @default([])
+  startDate    DateTime?
+  durationDays Int?
+  createdAt    DateTime  @default(now())
 }
 
 model Area {

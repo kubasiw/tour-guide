@@ -8,6 +8,24 @@
     <div class="card">
       <div class="card-body">
         <app-area-summary [area]="value.area" />
+
+        @if (value.activities.length > 0) {
+          <div class="mt-3">
+            <h2 class="h6">Aktywności</h2>
+            <div class="d-flex flex-wrap gap-2">
+              @for (key of value.activities; track key) {
+                <span class="badge bg-secondary">{{ label(key) }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        @if (value.startDate) {
+          <p class="mt-3 mb-0">
+            <i class="bi bi-calendar-event me-2"></i>{{ value.startDate | date }} ·
+            {{ value.durationDays }} dni
+          </p>
+        }
       </div>
     </div>
 

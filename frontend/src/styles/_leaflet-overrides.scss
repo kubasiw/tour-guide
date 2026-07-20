@@ -1,14 +1,22 @@
-// Leaflet's own controls (zoom +/- and leaflet-draw's toolbar) ship at ~30px,
-// below the ~44px comfortable touch-target minimum. Bumped app-wide since a
-// bigger target doesn't hurt desktop mouse use either. Needs to load *after*
-// leaflet's own CSS in angular.json's `styles` array to win the cascade
-// without `!important`.
-// `.leaflet-touch .leaflet-bar a` (Leaflet adds `.leaflet-touch` on touch-capable
-// devices) is *more specific* than a plain `.leaflet-bar a` override and wins
+// Leaflet's zoom control ships at ~30px, below the ~44px comfortable touch-target
+// minimum. Bumped since a bigger target doesn't hurt desktop mouse use either.
+// Needs to load *after* leaflet's own CSS in angular.json's `styles` array to win
+// the cascade without `!important`.
+// `.leaflet-touch .leaflet-control-zoom a` (Leaflet adds `.leaflet-touch` on
+// touch-capable devices) is *more specific* than a plain selector and wins
 // regardless of source order — match it explicitly, not just the base selector.
-.leaflet-bar a,
-.leaflet-touch .leaflet-bar a,
-.leaflet-draw-toolbar a {
+//
+// Gotcha: leaflet-draw's toolbar icons (`.leaflet-draw-toolbar a`) are NOT
+// plain glyphs like the zoom control — they're a background-image sprite sheet
+// with per-icon `background-position` offsets hardcoded by leaflet-draw for its
+// native ~30px box. Resizing that box without rescaling `background-size` and
+// every icon's `background-position` misaligns the icon and bleeds in slivers
+// of neighboring sprite icons. Don't extend this 44px override to
+// `.leaflet-draw-toolbar a` — leave leaflet-draw's own toolbar at its native
+// touch size (already reasonably tappable, and it's what the library itself
+// designed for `.leaflet-touch` mode).
+.leaflet-control-zoom a,
+.leaflet-touch .leaflet-control-zoom a {
   width: 44px;
   height: 44px;
   line-height: 44px;

@@ -41,12 +41,15 @@ is complete; work now moves to "Beyond MVP" below.
    (`GET /weather?lat=&lng=`, no key needed, uses Node's global `fetch`), surfaced on `/plans/:id`
    as a 5-day forecast for the plan's `Area` centroid (`areaCenter()` in `core/area.model.ts`)
 
-**Beyond MVP** — next up, in this agreed order (none started yet):
+**Beyond MVP** — next up, in this agreed order:
 
-1. Frontend `activity-selector/` (multi-select: hiking, sightseeing, culture, food, ...) +
-   `trip-details/` (arrival date + duration) — capture the preferences the generator needs. Both
-   unauthenticated, same as `area-picker`. Extend `Plan` (currently just `status`/`area`) with the
-   captured activities/dates once these exist.
+1. ✅ Frontend `activity-selector/` (multi-select: hiking, sightseeing, culture, food, nightlife,
+   relax) + `trip-details/` (arrival date + duration) — capture the preferences the generator
+   needs. Both unauthenticated, same as `area-picker`. Flow is now `area-picker` → `POST /plans` →
+   `/plans/:id/activities` → `PATCH /plans/:id` → `/plans/:id/trip-details` → `PATCH /plans/:id` →
+   `/plans/:id` (`PlanDetail`, now also rendering the captured activities/dates). `Plan` extended
+   with `activities: string[]` (Postgres array, not a separate `Activity` model — see the note
+   below), `startDate: DateTime?`, `durationDays: Int?`.
 2. `PoiModule` — ingest/cache POI data from Overpass/OSM for a given `Area`.
 3. `PlanGeneratorModule` — starts as a simple rule-based algorithm combining `Area` + `Activity`
    selections + `WeatherModule` forecast into a concrete list of `PlanItem`s (no AI yet).
@@ -64,6 +67,15 @@ is complete; work now moves to "Beyond MVP" below.
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history
 around the "step 4" clarification).
+
+`activities` deliberately deviates from `PROJECT_BRIEF.md`'s "wstępny" data model, which proposes a
+separate `Activity` dictionary model with a many-to-many relation to `Plan` — same judgment call
+already made for `Area`/`AreasModule`: a fixed, small interest list doesn't need DB-managed
+metadata or an admin UI yet, so it's just a validated `String[]` column (`backend/src/plans/
+activity-keys.ts` is the single source of truth for valid keys server-side; the frontend duplicates
+the same keys with labels/icons in `core/activity.model.ts`, no shared package). Revisit if
+activities ever need i18n or admin-editable metadata. `PlansModule` also gained `PATCH /plans/:id`
+(partial update — either step can PATCH independently) alongside the existing `POST`/`GET`.
 
 ## Key technical decisions
 
@@ -136,7 +148,7 @@ npm run format         # prettier --write over src/**/*.{ts,html,scss}
   than a root module. Cross-cutting services (e.g. `src/app/core/health.service.ts`) live under
   `src/app/core/`.
 - The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/` ✅,
-  `area-picker/` ✅, `activity-selector/`, `trip-details/`, `plan-view/` (currently `plans/
+  `area-picker/` ✅, `activity-selector/` ✅, `trip-details/` ✅, `plan-view/` (currently `plans/
   plan-detail/`, a minimal stand-in — may get renamed/expanded once real generation exists),
   `plan-chat/`, `my-plans/` — the rest don't exist yet, add them in the order in the Roadmap above.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
@@ -236,12 +248,24 @@ Frontend-specific:
     real controls stay comfortably tappable. `.btn-sm` is still fine for genuinely secondary/dense
     UI, just not the main actions.
   - Leaflet adds a `.leaflet-touch` class on touch-capable devices, and its own
-    `.leaflet-touch .leaflet-bar a` rule (extra class = higher specificity) overrides a plain
-    `.leaflet-bar a` override *regardless of source order*. `_leaflet-overrides.scss` targets
-    `.leaflet-touch .leaflet-bar a` explicitly for exactly this reason — don't simplify it back to
-    a single selector. Relatedly, `angular.json`'s `styles` array lists `src/styles.scss` *last* so
-    our own SCSS loads after Bootstrap/Leaflet's CSS and wins the cascade on equal specificity
-    without `!important` — don't reorder it back without a reason.
+    `.leaflet-touch .leaflet-control-zoom a` rule (extra class = higher specificity) overrides a
+    plain `.leaflet-control-zoom a` override *regardless of source order*.
+    `_leaflet-overrides.scss` targets `.leaflet-touch .leaflet-control-zoom a` explicitly for
+    exactly this reason — don't simplify it back to a single selector. Relatedly, `angular.json`'s
+    `styles` array lists `src/styles.scss` *last* so our own SCSS loads after Bootstrap/Leaflet's
+    CSS and wins the cascade on equal specificity without `!important` — don't reorder it back
+    without a reason.
+  - **Correction (2026-07-20):** the touch-target bump originally also targeted
+    `.leaflet-draw-toolbar a` (broad `.leaflet-bar a` selector) — this broke the draw toolbar's
+    icons (spotted via a screenshot: extra clipped icon slivers, main icon off-center). Those icons
+    aren't glyphs like the zoom control; leaflet-draw paints them from a single sprite sheet
+    (`background-image`) with per-icon `background-position` offsets hardcoded for its native
+    ~30px box. Stretching the box to 44px without rescaling `background-size` and every icon's
+    `background-position` misaligns the icon and reveals a sliver of the neighboring sprite icon.
+    Fixed by scoping the 44px override to `.leaflet-control-zoom a` only (plain
+    text glyphs, safe to resize) and leaving `.leaflet-draw-toolbar a` at Leaflet's native size.
+    Don't re-widen the override to cover sprite-based Leaflet controls without also rescaling
+    `background-size`/`background-position` per icon.
 - **UI components**: `@ng-bootstrap/ng-bootstrap` (standalone components: `NgbAlert`, dropdown,
   modal, accordion, tooltip, ...) for interactive UI, `bootstrap-icons` (`bi bi-*` classes, loaded
   globally via `angular.json`'s `styles` array) for icons. Chosen over Angular Material to keep one

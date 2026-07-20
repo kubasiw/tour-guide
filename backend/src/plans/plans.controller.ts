@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CreatePlanDto } from './dto/create-plan.dto';
+import { UpdatePlanDto } from './dto/update-plan.dto';
 import { PlansService, PlanWithArea } from './plans.service';
 
 @Controller('plans')
@@ -14,5 +15,13 @@ export class PlansController {
   @Get(':id')
   public findOne(@Param('id') id: string): Promise<PlanWithArea> {
     return this.plansService.findOne(id);
+  }
+
+  @Patch(':id')
+  public update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePlanDto,
+  ): Promise<PlanWithArea> {
+    return this.plansService.update(id, dto);
   }
 }

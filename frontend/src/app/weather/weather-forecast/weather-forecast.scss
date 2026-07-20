@@ -1,3 +1,9 @@
 .weather-forecast__day {
-  width: 8rem;
+  width: 5.5rem;
+}
+
+.weather-forecast__date,
+.weather-forecast__label,
+.weather-forecast__precip {
+  font-size: 0.7rem;
 }

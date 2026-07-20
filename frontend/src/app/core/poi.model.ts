@@ -24,3 +24,12 @@ export const POI_TYPE_ICONS: Record<PoiType, string> = {
   shelter: 'bi-house-door',
   accommodation: 'bi-building',
 };
+
+export const POI_TYPE_COLORS: Record<PoiType, string> = {
+  trail: 'bg-success-subtle',
+  monument: 'bg-warning-subtle',
+  restaurant: 'bg-danger-subtle',
+  nightlife: 'bg-info-subtle',
+  shelter: 'bg-secondary-subtle',
+  accommodation: 'bg-primary-subtle',
+};

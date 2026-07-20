@@ -1,0 +1,25 @@
+@use 'variables' as v;
+
+.poi-tile {
+  width: 100%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.15);
+  }
+}
+
+.poi-tile--selected {
+  border-color: v.$accent;
+}
+
+.poi-tile__badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}

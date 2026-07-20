@@ -59,24 +59,38 @@ is complete; work now moves to "Beyond MVP" below.
    map (`backend/src/poi/overpass-tags.ts`) covering the brief's 5 `PoiType`s (`trail`, `monument`,
    `restaurant`, `shelter`, `accommodation`) — `way`/`relation` geometries (e.g. real trail paths)
    are deferred; a `tourism=trailhead` node is used as a `trail` proxy for now.
-3. ✅ `PlanGeneratorModule` — rule-based (no AI yet): `POST /plans/:id/generate` (also
-   `GET /plans/:id/items`) maps the plan's `activities` to `PoiType`s (`plan-generator/
-   activity-poi-mapping.ts`), fetches candidates via `PoiService.findInBoundingBox` and a forecast
-   via `WeatherService.getForecast`, then assigns them to days — `trail` is the only "outdoor" type
-   and gets the driest available days first, everything else spreads evenly regardless of weather
-   (a day-level preference, not a hard exclusion). Candidates are balanced round-robin across the
-   matched `PoiType`s before capping at `durationDays × 4`, not just naively truncated — an early
+3. ✅ `PlanGeneratorModule` — `GET /plans/:id/candidates` maps the plan's `activities` to
+   `PoiType`s (`plan-generator/activity-poi-mapping.ts`), fetches matches via
+   `PoiService.findInBoundingBox`, and returns them balanced round-robin across the matched
+   `PoiType`s, capped at a flat `MAX_CANDIDATES = 24` — not just naively truncated; an early
    version truncated first and produced a plan that was 100% monuments and 0% restaurants despite
-   "food" being selected, since Postgres/Overpass return order isn't type-balanced. Regenerating
-   always replaces existing `PlanItem`s (deletes + recreates in one transaction, sets `Plan.status
-   = 'generated'`) — step 4 will need to change this to preserve `userModified` items. Got a
-   minimal read-only day-grouped view on `/plans/:id` itself (a "Generuj plan"/"Generuj ponownie"
-   button + list) rather than deferred like the POI step, since step 4 extends this display with
-   editing rather than replacing it.
-4. Plan editing (reorder/add/remove `PlanItem`s) + `my-plans/` (saved templates, listing a user's
-   plans) — the first feature that inherently requires an account, since "my plans" only makes
-   sense for a logged-in user; a natural candidate for finally applying the already-built
-   `authGuard` to a route.
+   "food" being selected, since Postgres/Overpass return order isn't type-balanced. `POST
+   /plans/:id/items` / `DELETE /plans/:id/items/:itemId` / `GET /plans/:id/items` let the user
+   manually add/remove specific candidates into their plan (a DB `@@unique([planId, poiId])`
+   constraint blocks double-adding the same POI, surfaced as a 409). **Correction (2026-07-20):**
+   this module originally also auto-assigned items to days with weather-aware ordering (dropped
+   `PlanItem`s into a `POST /plans/:id/generate` transaction) — replaced after user feedback that
+   the day-by-day list wasn't the intended UX. The real target is a tile grid the user browses and
+   manually selects from (`/plans/:id`'s new `<app-poi-picker>`, tiles styled per `PoiType` via
+   Bootstrap `bg-*-subtle` utilities, no new hex colors), with day/time organization deferred to a
+   real future step rather than auto-guessed. `PlanItem.dayNumber` is now nullable (`Int?`) to
+   represent "not yet organized into days." This also means `PlanGeneratorModule` no longer depends
+   on `WeatherModule` (weather forecast display stays independent, unaffected, still on
+   `plan-detail`). **Deliberately not done here:** real per-POI photos — would need resolving each
+   POI's OSM `wikipedia`/`wikidata` tag through Wikipedia's API into an actual image URL, a new
+   external integration most POI types won't even have data for; tiles get a type-styled
+   icon+color placeholder instead. Google ratings/photos remain a separate, deferred decision (not
+   forgotten, see the AI integration note below for the same "free vs. paid API" tension).
+   **Gotcha found while migrating this:** `prisma migrate dev` refuses to run at all (even with
+   `--create-only`) for any schema change with a warning attached (e.g. "this could fail if
+   duplicate data exists") when the shell is non-interactive — no bypass flag exists for `migrate
+   dev` itself. Worked around by hand-writing the migration SQL into a new
+   `prisma/migrations/<timestamp>_<name>/migration.sql` folder (matching Prisma's own naming/
+   format) and applying it with `prisma migrate deploy`, which is designed for non-interactive use.
+4. Plan editing (reorder `PlanItem`s — add/remove is already done, see step 3 above) +
+   `my-plans/` (saved templates, listing a user's plans) — the first feature that inherently
+   requires an account, since "my plans" only makes sense for a logged-in user; a natural candidate
+   for finally applying the already-built `authGuard` to a route.
 5. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
@@ -133,13 +147,13 @@ clearing the `Poi`/`PlanItem` tables in dev to force a fresh Overpass fetch unde
 tags. That manual `DELETE` was a deliberate one-off, not a new cache-invalidation mechanism — there
 are no real users yet, so wiping dev-only cached data is the pragmatic fix; if tag-list edits like
 this keep requiring a manual flush, that's the signal to build real invalidation, not before.
-`PlanGeneratorModule` also required adding `exports: [XxxService]` to `PlansModule`/`PoiModule`/
-`WeatherModule` (first time this codebase needed cross-module service injection — none had an
-`exports` array before). Explicitly not implemented yet, both honest simplifications for a
-"starts as a simple rule-based algorithm" step: opening-hours-aware time-of-day scheduling
-(`PlanItem` has no time field, matching the brief's own model) and proximity/distance-based
-candidate ranking within a type (selection is type-balanced but not distance-sorted from the
-area's center).
+`PlanGeneratorModule` also required adding `exports: [XxxService]` to `PlansModule`/`PoiModule`
+(first time this codebase needed cross-module service injection — none had an `exports` array
+before; `WeatherModule` got one too at the time, though `PlanGeneratorModule` no longer imports it
+after the manual-selection redesign above). Explicitly not implemented yet, both honest
+simplifications: opening-hours-aware time-of-day scheduling (`PlanItem` has no time field, matching
+the brief's own model) and proximity/distance-based candidate ranking within a type (selection is
+type-balanced but not distance-sorted from the area's center).
 
 ## Key technical decisions
 

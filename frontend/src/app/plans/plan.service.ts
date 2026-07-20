@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../core/api-base-url';
 import { Area } from '../core/area.model';
+import { Poi } from '../core/poi.model';
 import { Plan } from './plan.model';
 import { PlanItemWithPoi } from './plan-item.model';
 
@@ -24,11 +25,19 @@ export class PlanService {
     return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}`, patch);
   }
 
-  public generate(id: string): Observable<PlanItemWithPoi[]> {
-    return this.http.post<PlanItemWithPoi[]>(`${API_BASE_URL}/plans/${id}/generate`, {});
+  public getCandidates(id: string): Observable<Poi[]> {
+    return this.http.get<Poi[]>(`${API_BASE_URL}/plans/${id}/candidates`);
   }
 
   public getItems(id: string): Observable<PlanItemWithPoi[]> {
     return this.http.get<PlanItemWithPoi[]>(`${API_BASE_URL}/plans/${id}/items`);
+  }
+
+  public addItem(planId: string, poiId: string): Observable<PlanItemWithPoi> {
+    return this.http.post<PlanItemWithPoi>(`${API_BASE_URL}/plans/${planId}/items`, { poiId });
+  }
+
+  public removeItem(planId: string, itemId: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE_URL}/plans/${planId}/items/${itemId}`);
   }
 }

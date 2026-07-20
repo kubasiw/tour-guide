@@ -11,13 +11,21 @@
     <div class="d-flex flex-wrap gap-2">
       @for (day of value.daily; track day.date) {
         <div class="card weather-forecast__day">
-          <div class="card-body text-center p-2">
-            <div class="small text-muted">{{ day.date | date: 'EEE d.M' }}</div>
-            <i class="bi {{ weatherCodeToIcon(day.weatherCode).icon }} fs-3 my-1"></i>
-            <div class="small">{{ weatherCodeToIcon(day.weatherCode).label }}</div>
-            <div>{{ day.tempMaxC | number: '1.0-0' }}° / {{ day.tempMinC | number: '1.0-0' }}°</div>
-            <div class="small text-muted">
-              <i class="bi bi-droplet-fill me-1"></i>{{ day.precipitationMm | number: '1.0-1' }} mm
+          <div class="card-body text-center p-1">
+            <div class="weather-forecast__date text-muted">{{ day.date | date: 'EEE d.M' }}</div>
+            <i
+              class="bi {{ weatherCodeToIcon(day.weatherCode).icon }} {{
+                weatherCodeToIcon(day.weatherCode).colorClass
+              }} fs-4 my-1"
+            ></i>
+            <div class="weather-forecast__label text-truncate">
+              {{ weatherCodeToIcon(day.weatherCode).label }}
+            </div>
+            <div class="small">
+              {{ day.tempMaxC | number: '1.0-0' }}° / {{ day.tempMinC | number: '1.0-0' }}°
+            </div>
+            <div class="weather-forecast__precip text-muted">
+              <i class="bi bi-droplet-fill text-info me-1"></i>{{ day.precipitationMm | number: '1.0-1' }} mm
             </div>
           </div>
         </div>

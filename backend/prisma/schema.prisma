@@ -61,8 +61,10 @@ model PlanItem {
   poiId        String
   poi          Poi      @relation(fields: [poiId], references: [id])
   order        Int
-  dayNumber    Int
+  dayNumber    Int?
   note         String?
   userModified Boolean  @default(false)
   createdAt    DateTime @default(now())
+
+  @@unique([planId, poiId])
 }

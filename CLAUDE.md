@@ -87,15 +87,40 @@ is complete; work now moves to "Beyond MVP" below.
    dev` itself. Worked around by hand-writing the migration SQL into a new
    `prisma/migrations/<timestamp>_<name>/migration.sql` folder (matching Prisma's own naming/
    format) and applying it with `prisma migrate deploy`, which is designed for non-interactive use.
-4. Plan editing (reorder `PlanItem`s — add/remove is already done, see step 3 above) +
+4. **UX polish batch** (agreed 2026-07-20, five small/independent tweaks, no big design forks —
+   worth doing together before the bigger step below): short description text under each
+   `shared/stepper/` step saying what that screen lets you do; `/plans/:id` lays out the area/
+   activity/trip-details card and `<app-weather-forecast>` side by side (`row`/`col-md-6`, still
+   stacks on mobile) instead of one under the other, since neither needs full width; a search box
+   on `area-picker`'s map (place name → Leaflet `flyTo()`) so the user doesn't have to pan/zoom the
+   whole world by hand; the raw `AreaSummary` jargon ("Polygon with 6 points") on `/plans/:id`
+   replaced with a real place name — both this and the map search use **Nominatim** (OpenStreetMap's
+   own free reverse/forward geocoding, same free-API family as Overpass/Open-Meteo, needs the same
+   explicit `User-Agent` header Overpass required); and `PoiService` skips Overpass elements with no
+   `name` tag before caching/returning them — an unnamed tile isn't useful to the user and wastes
+   cache rows (accepted trade-off: some real but unnamed OSM features, e.g. a bare `tourism=
+   trailhead` node, will now be silently dropped).
+5. **Editable `Area` + 3-step stepper** (agreed 2026-07-20, bigger — plan it properly rather than
+   bolting it on): extend `shared/stepper/` to include `area-picker` as a real step 1, not just a
+   visual label — clicking back to "Obszar" from `activities`/`trip-details` should show and let you
+   revise the actual shape you drew, not a blank new map. Needs a new `PATCH` for `Area.geometry`
+   (today it's write-once, set only inside `POST /plans`'s creation transaction — `PlansService` has
+   no update path for it at all) and `area-picker` learning to load an existing `Plan` and pre-draw
+   its already-confirmed polygon/circle on the Leaflet map instead of always starting blank.
+6. Plan editing (reorder `PlanItem`s — add/remove is already done, see step 3 above) +
    `my-plans/` (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, since "my plans" only makes sense for a logged-in user; a natural candidate
    for finally applying the already-built `authGuard` to a route.
-5. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
+7. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
    gated behind login, for cost control this time (anonymous users get a non-LLM overview instead).
-6. Adaptive per-region theming on the generated plan view, once AI can classify an area's
+   **Scope note (2026-07-20):** this is also where the short AI-written area description belongs
+   (e.g. "Kraków — Stare Miasto" plus a couple of honest, non-generic sentences) — the place *name*
+   ships earlier in step 4 above via free Nominatim geocoding, but the *description* needs the LLM
+   this step builds, and inherits its login-gating; don't build an early/separate AI call just for
+   this one field.
+8. Adaptive per-region theming on the generated plan view, once AI can classify an area's
    character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the

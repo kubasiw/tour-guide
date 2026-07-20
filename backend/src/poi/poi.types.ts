@@ -2,6 +2,7 @@ export const POI_TYPES = [
   'trail',
   'monument',
   'restaurant',
+  'nightlife',
   'shelter',
   'accommodation',
 ] as const;

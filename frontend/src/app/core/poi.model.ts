@@ -1,4 +1,10 @@
-export type PoiType = 'trail' | 'monument' | 'restaurant' | 'shelter' | 'accommodation';
+export type PoiType =
+  | 'trail'
+  | 'monument'
+  | 'restaurant'
+  | 'nightlife'
+  | 'shelter'
+  | 'accommodation';
 
 export interface Poi {
   id: string;
@@ -14,6 +20,7 @@ export const POI_TYPE_ICONS: Record<PoiType, string> = {
   trail: 'bi-signpost-2',
   monument: 'bi-bank',
   restaurant: 'bi-cup-hot',
+  nightlife: 'bi-moon-stars',
   shelter: 'bi-house-door',
   accommodation: 'bi-building',
 };

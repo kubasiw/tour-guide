@@ -115,12 +115,24 @@ activities ever need i18n or admin-editable metadata. `PlansModule` also gained 
 
 `PlanGeneratorModule`'s activity→`PoiType` mapping (`backend/src/plan-generator/
 activity-poi-mapping.ts`) is a new decision, not something the brief specifies — `ACTIVITY_KEYS`
-(6) and `POI_TYPES` (5) were designed independently in steps 1 and 2 and never cross-referenced.
-Current mapping: `hiking`→trail+shelter, `sightseeing`/`culture`→monument, `food`/`nightlife`→
-restaurant, `relax`→accommodation. `nightlife` has no dedicated `PoiType` — cheaper to extend
-`restaurant`'s Overpass tags with `amenity=bar`/`pub`/`nightclub` (already done, see
-`overpass-tags.ts`) than add a 6th `PoiType` for one activity. Reasonable, not the only valid
-mapping — revisit if it produces bad-feeling plans in practice.
+(6) and `POI_TYPES` (6) were designed independently in steps 1 and 2 and never cross-referenced.
+Current mapping: `hiking`→trail+shelter, `sightseeing`/`culture`→monument, `food`→restaurant,
+`nightlife`→nightlife, `relax`→accommodation.
+**Correction (2026-07-20):** `nightlife` originally mapped to `restaurant` (sharing `PoiType` with
+`food`, on the reasoning that adding tags to an existing type was cheaper than a 6th `PoiType`) —
+user reported a plan generated for "Życie nocne" only returned cafes/restaurants. Two compounding
+causes: (1) even with correct tag data, sharing a `PoiType` means nightlife results are
+indistinguishable from food results (same icon, same label) — no amount of tag-list fixing solves
+that on its own; (2) the `amenity=bar`/`pub`/`nightclub` tags had only just been added to
+`restaurant`'s Overpass query in the *same* step that introduced the mapping, but `PoiService`'s
+cache-first-by-bbox strategy (see its own limitation note above) meant already-cached bboxes never
+re-fetched under the new tags — bars/pubs/nightclubs were silently never ingested for any
+previously-tested area. Fixed by giving `nightlife` its own `PoiType` (`overpass-tags.ts`'s
+`nightlife` entry now owns `amenity=bar`/`pub`/`nightclub`, split out of `restaurant`) and manually
+clearing the `Poi`/`PlanItem` tables in dev to force a fresh Overpass fetch under the corrected
+tags. That manual `DELETE` was a deliberate one-off, not a new cache-invalidation mechanism — there
+are no real users yet, so wiping dev-only cached data is the pragmatic fix; if tag-list edits like
+this keep requiring a manual flush, that's the signal to build real invalidation, not before.
 `PlanGeneratorModule` also required adding `exports: [XxxService]` to `PlansModule`/`PoiModule`/
 `WeatherModule` (first time this codebase needed cross-module service injection — none had an
 `exports` array before). Explicitly not implemented yet, both honest simplifications for a

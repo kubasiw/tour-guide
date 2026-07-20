@@ -5,6 +5,6 @@ export const ACTIVITY_TO_POI_TYPES: Record<string, PoiType[]> = {
   sightseeing: ['monument'],
   culture: ['monument'],
   food: ['restaurant'],
-  nightlife: ['restaurant'],
+  nightlife: ['nightlife'],
   relax: ['accommodation'],
 };

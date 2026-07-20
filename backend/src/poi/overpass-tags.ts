@@ -1,14 +1,8 @@
 import { PoiType } from './poi.types';
 
 export const OVERPASS_TAG_QUERIES: Record<PoiType, string[]> = {
-  restaurant: [
-    'amenity=restaurant',
-    'amenity=cafe',
-    'amenity=fast_food',
-    'amenity=bar',
-    'amenity=pub',
-    'amenity=nightclub',
-  ],
+  restaurant: ['amenity=restaurant', 'amenity=cafe', 'amenity=fast_food'],
+  nightlife: ['amenity=bar', 'amenity=pub', 'amenity=nightclub'],
   monument: [
     'historic=monument',
     'historic=memorial',

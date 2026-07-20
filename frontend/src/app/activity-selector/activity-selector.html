@@ -1,37 +1,43 @@
 <div class="container py-4">
-  <h1 class="h3 mb-1">Wybierz zainteresowania</h1>
-  <p class="text-body-secondary mb-4">Wybierz co najmniej jedną aktywność.</p>
+  @if (plan.isLoading()) {
+    <app-loader variant="spinner" />
+  } @else {
+    <app-stepper [steps]="steps()" />
 
-  <div class="d-flex flex-wrap gap-2 mb-4">
-    @for (activity of activities; track activity.key) {
-      <button
-        type="button"
-        class="btn"
-        [class.btn-accent]="selected().has(activity.key)"
-        [class.btn-outline-secondary]="!selected().has(activity.key)"
-        (click)="toggle(activity.key)"
-      >
-        <i class="bi {{ activity.icon }} me-1"></i>{{ activity.label }}
-      </button>
+    <h1 class="h3 mb-1">Wybierz zainteresowania</h1>
+    <p class="text-body-secondary mb-4">Wybierz co najmniej jedną aktywność.</p>
+
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      @for (activity of activities; track activity.key) {
+        <button
+          type="button"
+          class="btn"
+          [class.btn-accent]="selected().has(activity.key)"
+          [class.btn-outline-secondary]="!selected().has(activity.key)"
+          (click)="toggle(activity.key)"
+        >
+          <i class="bi {{ activity.icon }} me-1"></i>{{ activity.label }}
+        </button>
+      }
+    </div>
+
+    @if (errorMessage(); as message) {
+      <ngb-alert type="danger" class="mb-3" [dismissible]="false">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+      </ngb-alert>
     }
-  </div>
 
-  @if (errorMessage(); as message) {
-    <ngb-alert type="danger" class="mb-3" [dismissible]="false">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
-    </ngb-alert>
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="selected().size === 0 || submitting()"
+      (click)="submit()"
+    >
+      @if (submitting()) {
+        <app-loader variant="spinner" />
+      } @else {
+        Dalej<i class="bi bi-arrow-right ms-1"></i>
+      }
+    </button>
   }
-
-  <button
-    type="button"
-    class="btn btn-primary"
-    [disabled]="selected().size === 0 || submitting()"
-    (click)="submit()"
-  >
-    @if (submitting()) {
-      <app-loader variant="spinner" />
-    } @else {
-      Dalej<i class="bi bi-arrow-right ms-1"></i>
-    }
-  </button>
 </div>

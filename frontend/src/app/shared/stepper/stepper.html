@@ -1,0 +1,21 @@
+<nav class="d-flex align-items-center gap-2 mb-4" aria-label="Postęp">
+  @for (step of steps(); track step.label; let last = $last) {
+    @if (step.current) {
+      <span class="stepper__node bg-accent text-white" aria-current="step">{{ $index + 1 }}</span>
+    } @else if (step.completed) {
+      <a
+        [routerLink]="step.routerLink"
+        class="stepper__node bg-primary text-white"
+        [attr.aria-label]="step.label + ' (ukończony, kliknij aby wrócić)'"
+      >
+        <i class="bi bi-check-lg"></i>
+      </a>
+    } @else {
+      <span class="stepper__node border text-body-secondary">{{ $index + 1 }}</span>
+    }
+    <span class="small" [class.fw-medium]="step.current">{{ step.label }}</span>
+    @if (!last) {
+      <span class="stepper__connector"></span>
+    }
+  }
+</nav>

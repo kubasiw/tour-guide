@@ -382,6 +382,19 @@ Frontend-specific:
   `resource()`/`rxResource()` calls — and pass data down to dumb components via inputs (see `App`
   passing loading state to `<app-loader>`). When a component starts doing both (owning state *and*
   being reused verbatim with different data), that's the signal to split it.
+  `shared/stepper/stepper.ts` (added 2026-07-20 for `activity-selector`/`trip-details` back/forward
+  navigation) is a case where extracting a shared component was initially skipped — an earlier pass
+  judged "just 2 screens, a one-line 'Step X of 2' text" not worth it — then revisited once the
+  actual ask (click a completed step to go back, or forward to an already-confirmed one, with
+  correct locked/current/completed states) turned out to be real interaction logic, not "three
+  similar lines." `StepperStep`'s `completed` flag is computed from the `Plan` itself
+  (`plans/plan-steps.ts`'s `buildPlanSteps()`, e.g. `activities.length > 0`), not from route
+  position — a step you've already confirmed still reads as completed even after navigating back
+  past it. Building this required `ActivitySelector`/`TripDetails` to load the `Plan` for the first
+  time (previously write-only, PATCH without a GET) — used that same load to fix a real gap:
+  navigating back had been showing a blank form even when that step was already filled in, since
+  neither component seeded its state from existing `Plan` data. Both now do via an `effect()`
+  reacting to the loaded `Plan`.
 - **Avoid duplicated/bloated logic**: extract repeated logic into a helper function, a shared
   service method, or a dumb component rather than copy-pasting or letting one method grow to handle
   multiple concerns (backend `auth.service.ts`'s shared `buildToken` helper is the existing example

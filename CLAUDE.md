@@ -59,8 +59,20 @@ is complete; work now moves to "Beyond MVP" below.
    map (`backend/src/poi/overpass-tags.ts`) covering the brief's 5 `PoiType`s (`trail`, `monument`,
    `restaurant`, `shelter`, `accommodation`) — `way`/`relation` geometries (e.g. real trail paths)
    are deferred; a `tourism=trailhead` node is used as a `trail` proxy for now.
-3. `PlanGeneratorModule` — starts as a simple rule-based algorithm combining `Area` + `Activity`
-   selections + `WeatherModule` forecast into a concrete list of `PlanItem`s (no AI yet).
+3. ✅ `PlanGeneratorModule` — rule-based (no AI yet): `POST /plans/:id/generate` (also
+   `GET /plans/:id/items`) maps the plan's `activities` to `PoiType`s (`plan-generator/
+   activity-poi-mapping.ts`), fetches candidates via `PoiService.findInBoundingBox` and a forecast
+   via `WeatherService.getForecast`, then assigns them to days — `trail` is the only "outdoor" type
+   and gets the driest available days first, everything else spreads evenly regardless of weather
+   (a day-level preference, not a hard exclusion). Candidates are balanced round-robin across the
+   matched `PoiType`s before capping at `durationDays × 4`, not just naively truncated — an early
+   version truncated first and produced a plan that was 100% monuments and 0% restaurants despite
+   "food" being selected, since Postgres/Overpass return order isn't type-balanced. Regenerating
+   always replaces existing `PlanItem`s (deletes + recreates in one transaction, sets `Plan.status
+   = 'generated'`) — step 4 will need to change this to preserve `userModified` items. Got a
+   minimal read-only day-grouped view on `/plans/:id` itself (a "Generuj plan"/"Generuj ponownie"
+   button + list) rather than deferred like the POI step, since step 4 extends this display with
+   editing rather than replacing it.
 4. Plan editing (reorder/add/remove `PlanItem`s) + `my-plans/` (saved templates, listing a user's
    plans) — the first feature that inherently requires an account, since "my plans" only makes
    sense for a logged-in user; a natural candidate for finally applying the already-built
@@ -100,6 +112,22 @@ activity-keys.ts` is the single source of truth for valid keys server-side; the 
 the same keys with labels/icons in `core/activity.model.ts`, no shared package). Revisit if
 activities ever need i18n or admin-editable metadata. `PlansModule` also gained `PATCH /plans/:id`
 (partial update — either step can PATCH independently) alongside the existing `POST`/`GET`.
+
+`PlanGeneratorModule`'s activity→`PoiType` mapping (`backend/src/plan-generator/
+activity-poi-mapping.ts`) is a new decision, not something the brief specifies — `ACTIVITY_KEYS`
+(6) and `POI_TYPES` (5) were designed independently in steps 1 and 2 and never cross-referenced.
+Current mapping: `hiking`→trail+shelter, `sightseeing`/`culture`→monument, `food`/`nightlife`→
+restaurant, `relax`→accommodation. `nightlife` has no dedicated `PoiType` — cheaper to extend
+`restaurant`'s Overpass tags with `amenity=bar`/`pub`/`nightclub` (already done, see
+`overpass-tags.ts`) than add a 6th `PoiType` for one activity. Reasonable, not the only valid
+mapping — revisit if it produces bad-feeling plans in practice.
+`PlanGeneratorModule` also required adding `exports: [XxxService]` to `PlansModule`/`PoiModule`/
+`WeatherModule` (first time this codebase needed cross-module service injection — none had an
+`exports` array before). Explicitly not implemented yet, both honest simplifications for a
+"starts as a simple rule-based algorithm" step: opening-hours-aware time-of-day scheduling
+(`PlanItem` has no time field, matching the brief's own model) and proximity/distance-based
+candidate ranking within a type (selection is type-balanced but not distance-sorted from the
+area's center).
 
 ## Key technical decisions
 
@@ -197,9 +225,10 @@ of testing every small change end-to-end regardless of size):
   `plan-chat/`, `my-plans/` — the rest don't exist yet, add them in the order in the Roadmap above.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
   (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
-  step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅. Not
-  built yet: `PlanGeneratorModule`, `AiModule`, `PlanChatModule` — build them in that order (see
-  Roadmap above).
+  step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅,
+  `PlanGeneratorModule` ✅ (backend-only — its display lives in `plan-detail`, not a new frontend
+  feature folder, since it's inherently the plan's own view). Not built yet: `AiModule`,
+  `PlanChatModule` — build them in that order (see Roadmap above).
 - Frontend talks to backend over plain HTTP (`HttpClient`); the base URL is the shared
   `API_BASE_URL` constant in `frontend/src/app/core/api-base-url.ts` (hardcoded to
   `http://localhost:3000` during this early stage — no environment-based config exists yet, but at

@@ -20,15 +20,16 @@ model User {
 }
 
 model Plan {
-  id           String    @id @default(uuid())
+  id           String     @id @default(uuid())
   userId       String?
-  user         User?     @relation(fields: [userId], references: [id])
-  status       String    @default("draft")
+  user         User?      @relation(fields: [userId], references: [id])
+  status       String     @default("draft")
   area         Area?
-  activities   String[]  @default([])
+  activities   String[]   @default([])
   startDate    DateTime?
   durationDays Int?
-  createdAt    DateTime  @default(now())
+  items        PlanItem[]
+  createdAt    DateTime   @default(now())
 }
 
 model Area {
@@ -40,14 +41,28 @@ model Area {
 }
 
 model Poi {
-  id           String   @id @default(uuid())
-  osmId        String   @unique
+  id           String     @id @default(uuid())
+  osmId        String     @unique
   name         String
   type         String
   lat          Float
   lng          Float
   openingHours String?
   sourceData   Json
+  planItems    PlanItem[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model PlanItem {
+  id           String   @id @default(uuid())
+  planId       String
+  plan         Plan     @relation(fields: [planId], references: [id])
+  poiId        String
+  poi          Poi      @relation(fields: [poiId], references: [id])
+  order        Int
+  dayNumber    Int
+  note         String?
+  userModified Boolean  @default(false)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
 }

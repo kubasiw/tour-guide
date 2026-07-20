@@ -1,0 +1,19 @@
+export type PoiType = 'trail' | 'monument' | 'restaurant' | 'shelter' | 'accommodation';
+
+export interface Poi {
+  id: string;
+  osmId: string;
+  name: string;
+  type: PoiType;
+  lat: number;
+  lng: number;
+  openingHours: string | null;
+}
+
+export const POI_TYPE_ICONS: Record<PoiType, string> = {
+  trail: 'bi-signpost-2',
+  monument: 'bi-bank',
+  restaurant: 'bi-cup-hot',
+  shelter: 'bi-house-door',
+  accommodation: 'bi-building',
+};

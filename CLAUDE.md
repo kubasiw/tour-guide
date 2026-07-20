@@ -137,6 +137,15 @@ is complete; work now moves to "Beyond MVP" below.
    plan's area doesn't reset `Plan.status`, activities, trip details, or touch existing
    `PlanItem`s, even though they may now be geographically stale. Auto-resetting user data as a
    side effect of an edit is a bigger, separate product decision nobody's asked for yet.
+   **Idea captured, not built (2026-07-20):** user asked to think about showing Obszar/Aktywności/
+   Termin all on **one single view** instead of the current 3 separate routed steps
+   (`/plans/:id/area` → `/plans/:id/activities` → `/plans/:id/trip-details`) users click through one
+   at a time. This is a real redesign of the already-built stepper flow, not a new sequential step
+   — the map, activity toggles, and date/duration fields would all need to sit together on one
+   screen (e.g. a single form with 3 sections, each still `PATCH`ing its own slice of `Plan`
+   independently as today, or one combined save). Worth doing as its own deliberate UX pass rather
+   than folding it into an unrelated step — revisit and decide timing/phasing then, don't build it
+   as a side effect of other work.
 6. ✅ **`my-plans/`** (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, split out from "plan editing" below since the two don't depend on each
    other (reorder needs no auth, `my-plans/` needs no reorder) and each is substantial on its own.

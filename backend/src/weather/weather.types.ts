@@ -6,7 +6,10 @@ export interface DailyForecast {
   precipitationMm: number;
 }
 
+export type ForecastSource = 'forecast' | 'historical-estimate';
+
 export interface Forecast {
   timezone: string;
+  source: ForecastSource;
   daily: DailyForecast[];
 }

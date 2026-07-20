@@ -7,7 +7,7 @@
     </ngb-alert>
   }
 
-  @if (candidates.isLoading() || items.isLoading()) {
+  @if (candidates.isLoading()) {
     <app-loader variant="skeleton" [lines]="4" />
   } @else if (candidates.error()) {
     <ngb-alert type="danger" [dismissible]="false">

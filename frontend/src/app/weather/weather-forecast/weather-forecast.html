@@ -9,6 +9,14 @@
         <i class="bi bi-exclamation-triangle-fill me-2"></i>Couldn't load the weather forecast.
       </ngb-alert>
     } @else if (forecast.value(); as value) {
+      @if (value.source === 'historical-estimate') {
+        <ngb-alert type="info" class="small py-2" [dismissible]="false">
+          <i class="bi bi-info-circle-fill me-2"></i>Prognoza nie jest jeszcze dostępna dla tego
+          terminu — poniżej średnia na podstawie ostatnich {{ historicalEstimateYears }} lat dla
+          tych dat.
+        </ngb-alert>
+      }
+
       <div class="d-flex flex-wrap gap-2">
         @for (day of value.daily; track day.date) {
           <div class="card weather-forecast__day">

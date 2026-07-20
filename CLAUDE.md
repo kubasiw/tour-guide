@@ -81,6 +81,12 @@ is complete; work now moves to "Beyond MVP" below.
    external integration most POI types won't even have data for; tiles get a type-styled
    icon+color placeholder instead. Google ratings/photos remain a separate, deferred decision (not
    forgotten, see the AI integration note below for the same "free vs. paid API" tension).
+   **Idea captured, not built (2026-07-20):** a small map preview on every pre-generation screen
+   (`activity-selector`, `trip-details`), not just `area-picker` — user's own framing was that this
+   could later double as a way to show selected attractions/trails once `PlanItem`s carry real
+   geometry. Revisit once there's an actual reason to render POIs on a map (this module's own trail
+   proxy is currently a single node, not a real path, so "show the trail" isn't meaningful yet
+   either) — don't build a bare decorative minimap just for its own sake.
    **Gotcha found while migrating this:** `prisma migrate dev` refuses to run at all (even with
    `--create-only`) for any schema change with a warning attached (e.g. "this could fail if
    duplicate data exists") when the shell is non-interactive — no bypass flag exists for `migrate
@@ -232,7 +238,22 @@ type-balanced but not distance-sorted from the area's center).
   over MapLibre GL because it needs zero-config free OSM raster tiles (no vector tile/style source
   to pick) and leaflet-draw already has mature polygon *and* circle(radius) drawing tools, matching
   the area-picker requirement directly.
-- **Weather = Open-Meteo** — free, no API key required.
+- **Weather = Open-Meteo** — free, no API key required. `GET /weather` now targets the plan's
+  actual `startDate`/`durationDays` (was hardcoded to "next 5 days from today," ignoring the trip
+  date entirely — a plan for 3 weeks out showed today's weather). Within `FORECAST_HORIZON_DAYS`
+  (`14`, comfortably inside Open-Meteo's real ~16-day forecast limit, matches the "2 weeks" framing
+  agreed with the user) it's a real forecast via `start_date`/`end_date` params; beyond that, no
+  real forecast exists yet, so `WeatherService.fetchHistoricalAverage` queries Open-Meteo's
+  separate free **Historical Weather API** (`archive-api.open-meteo.com`, same account/no-key
+  family, just a second endpoint — no new integration) for the same calendar dates across
+  `HISTORICAL_YEARS` (`5`) past years and averages temps/precipitation numerically, taking the
+  most-frequent WMO code as the representative one. Both constants are deliberate, tunable
+  choices, not rigorously chosen statistics. `Forecast.source: 'forecast' | 'historical-estimate'`
+  lets the frontend show a clear "this is an estimate" banner
+  (`weather-forecast.html`) rather than silently presenting averaged data as a real forecast. The
+  returned `daily[].date` values are always the actual planned trip dates, never the historical
+  sample dates the average was computed from. No `startDate`/`durationDays` (e.g. a `Plan` that
+  hasn't reached `trip-details` yet) falls back to the original "next 5 days from today" behavior.
 - **POI / trails / monuments / restaurants = OpenStreetMap + Overpass API** — free, matches the
   no-cost/open-source constraint.
 - **Geocoding (map search + reverse place names) = Nominatim** — OpenStreetMap's own free

@@ -9,6 +9,11 @@ export class WeatherController {
 
   @Get()
   public getForecast(@Query() query: GetForecastQueryDto): Promise<Forecast> {
-    return this.weatherService.getForecast(query.lat, query.lng);
+    return this.weatherService.getForecast(
+      query.lat,
+      query.lng,
+      query.startDate,
+      query.durationDays,
+    );
   }
 }

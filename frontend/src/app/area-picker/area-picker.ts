@@ -47,6 +47,7 @@ export class AreaPicker {
   public readonly id = input<string>();
 
   private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>('mapContainer');
+  private readonly confirmCard = viewChild<ElementRef<HTMLDivElement>>('confirmCard');
   private readonly destroyRef = inject(DestroyRef);
   private readonly planService = inject(PlanService);
   private readonly geocodingService = inject(GeocodingService);
@@ -80,6 +81,23 @@ export class AreaPicker {
       if (map && plan && !this.hasDrawnExisting) {
         this.hasDrawnExisting = true;
         this.drawExistingArea(map, plan.area);
+      }
+    });
+
+    // Scroll the confirm/clear card into view as soon as it appears — otherwise
+    // it renders below the map with no visual cue, and the user has to guess
+    // they need to scroll down to find it.
+    // The `@if`-rendered card's viewChild ref isn't populated yet during this
+    // same synchronous effect run (Angular hasn't flushed the template update),
+    // so a queued microtask reads it once rendering has actually happened.
+    effect(() => {
+      if (this.area()) {
+        queueMicrotask(() => {
+          this.confirmCard()?.nativeElement.scrollIntoView({
+            behavior: 'instant',
+            block: 'nearest',
+          });
+        });
       }
     });
   }

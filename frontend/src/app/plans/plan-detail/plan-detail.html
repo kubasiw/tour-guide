@@ -41,7 +41,12 @@
 
       <div class="col-12 col-lg-6">
         @if (center(); as point) {
-          <app-weather-forecast [lat]="point.lat" [lng]="point.lng" />
+          <app-weather-forecast
+            [lat]="point.lat"
+            [lng]="point.lng"
+            [startDate]="value.startDate ? value.startDate.slice(0, 10) : null"
+            [durationDays]="value.durationDays"
+          />
         }
       </div>
     </div>

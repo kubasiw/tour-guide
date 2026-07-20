@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { GeocodingModule } from './geocoding/geocoding.module';
 import { HealthModule } from './health/health.module';
 import { PlanGeneratorModule } from './plan-generator/plan-generator.module';
 import { PlansModule } from './plans/plans.module';
@@ -20,6 +21,7 @@ import { WeatherModule } from './weather/weather.module';
     WeatherModule,
     PoiModule,
     PlanGeneratorModule,
+    GeocodingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

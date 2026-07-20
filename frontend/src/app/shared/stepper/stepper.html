@@ -1,4 +1,4 @@
-<nav class="d-flex align-items-center gap-2 mb-4" aria-label="Postęp">
+<nav class="d-flex align-items-center gap-2 mb-2" aria-label="Postęp">
   @for (step of steps(); track step.label; let last = $last) {
     @if (step.current) {
       <span class="stepper__node bg-accent text-white" aria-current="step">{{ $index + 1 }}</span>
@@ -19,3 +19,7 @@
     }
   }
 </nav>
+
+@if (currentDescription(); as description) {
+  <p class="text-body-secondary small mb-4">{{ description }}</p>
+}

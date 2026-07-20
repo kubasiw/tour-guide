@@ -1,35 +1,37 @@
-<div class="mt-3">
-  <h2 class="h5 mb-3">Weather forecast</h2>
+<div class="card h-100">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Weather forecast</h2>
 
-  @if (forecast.isLoading()) {
-    <app-loader variant="skeleton" [lines]="3" />
-  } @else if (forecast.error()) {
-    <ngb-alert type="danger" [dismissible]="false">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>Couldn't load the weather forecast.
-    </ngb-alert>
-  } @else if (forecast.value(); as value) {
-    <div class="d-flex flex-wrap gap-2">
-      @for (day of value.daily; track day.date) {
-        <div class="card weather-forecast__day">
-          <div class="card-body text-center p-1">
-            <div class="weather-forecast__date text-muted">{{ day.date | date: 'EEE d.M' }}</div>
-            <i
-              class="bi {{ weatherCodeToIcon(day.weatherCode).icon }} {{
-                weatherCodeToIcon(day.weatherCode).colorClass
-              }} fs-4 my-1"
-            ></i>
-            <div class="weather-forecast__label text-truncate">
-              {{ weatherCodeToIcon(day.weatherCode).label }}
-            </div>
-            <div class="small">
-              {{ day.tempMaxC | number: '1.0-0' }}° / {{ day.tempMinC | number: '1.0-0' }}°
-            </div>
-            <div class="weather-forecast__precip text-muted">
-              <i class="bi bi-droplet-fill text-info me-1"></i>{{ day.precipitationMm | number: '1.0-1' }} mm
+    @if (forecast.isLoading()) {
+      <app-loader variant="skeleton" [lines]="3" />
+    } @else if (forecast.error()) {
+      <ngb-alert type="danger" [dismissible]="false">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Couldn't load the weather forecast.
+      </ngb-alert>
+    } @else if (forecast.value(); as value) {
+      <div class="d-flex flex-wrap gap-2">
+        @for (day of value.daily; track day.date) {
+          <div class="card weather-forecast__day">
+            <div class="card-body text-center p-1">
+              <div class="weather-forecast__date text-muted">{{ day.date | date: 'EEE d.M' }}</div>
+              <i
+                class="bi {{ weatherCodeToIcon(day.weatherCode).icon }} {{
+                  weatherCodeToIcon(day.weatherCode).colorClass
+                }} fs-4 my-1"
+              ></i>
+              <div class="weather-forecast__label text-truncate">
+                {{ weatherCodeToIcon(day.weatherCode).label }}
+              </div>
+              <div class="small">
+                {{ day.tempMaxC | number: '1.0-0' }}° / {{ day.tempMinC | number: '1.0-0' }}°
+              </div>
+              <div class="weather-forecast__precip text-muted">
+                <i class="bi bi-droplet-fill text-info me-1"></i>{{ day.precipitationMm | number: '1.0-1' }} mm
+              </div>
             </div>
           </div>
-        </div>
-      }
-    </div>
-  }
+        }
+      </div>
+    }
+  </div>
 </div>

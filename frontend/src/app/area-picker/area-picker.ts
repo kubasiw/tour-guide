@@ -12,6 +12,7 @@ import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import * as L from 'leaflet';
 import 'leaflet-draw';
 import { Area } from '../core/area.model';
+import { GeocodingService } from '../core/geocoding.service';
 import { extractErrorMessage } from '../core/http-error';
 import { AreaSummary } from '../shared/area-summary/area-summary';
 import { Loader } from '../shared/loader/loader';
@@ -38,12 +39,16 @@ export class AreaPicker {
   private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>('mapContainer');
   private readonly destroyRef = inject(DestroyRef);
   private readonly planService = inject(PlanService);
+  private readonly geocodingService = inject(GeocodingService);
   private readonly router = inject(Router);
 
   protected readonly area = signal<Area | null>(null);
   protected readonly confirming = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly searching = signal(false);
+  protected readonly searchError = signal<string | null>(null);
 
+  private map?: L.Map;
   private drawnItems?: L.FeatureGroup;
 
   public constructor() {
@@ -53,6 +58,45 @@ export class AreaPicker {
   protected clear(): void {
     this.area.set(null);
     this.drawnItems?.clearLayers();
+  }
+
+  protected onSearchSubmit(event: SubmitEvent, query: string): void {
+    event.preventDefault();
+    this.search(query);
+  }
+
+  protected search(query: string): void {
+    const trimmed = query.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    this.searching.set(true);
+    this.searchError.set(null);
+
+    this.geocodingService.search(trimmed).subscribe({
+      next: (result) => {
+        this.searching.set(false);
+        if (!result) {
+          this.searchError.set('Nie znaleziono takiego miejsca.');
+          return;
+        }
+
+        if (result.boundingBox) {
+          const { south, west, north, east } = result.boundingBox;
+          this.map?.fitBounds([
+            [south, west],
+            [north, east],
+          ]);
+        } else {
+          this.map?.flyTo([result.lat, result.lng], DEFAULT_ZOOM);
+        }
+      },
+      error: (err: unknown) => {
+        this.searching.set(false);
+        this.searchError.set(extractErrorMessage(err));
+      },
+    });
   }
 
   protected confirm(): void {
@@ -113,6 +157,7 @@ export class AreaPicker {
     this.destroyRef.onDestroy(() => window.removeEventListener('resize', handleResize));
 
     this.drawnItems = drawnItems;
+    this.map = map;
   }
 
   private toArea(event: L.DrawEvents.Created): Area {

@@ -87,19 +87,33 @@ is complete; work now moves to "Beyond MVP" below.
    dev` itself. Worked around by hand-writing the migration SQL into a new
    `prisma/migrations/<timestamp>_<name>/migration.sql` folder (matching Prisma's own naming/
    format) and applying it with `prisma migrate deploy`, which is designed for non-interactive use.
-4. **UX polish batch** (agreed 2026-07-20, five small/independent tweaks, no big design forks —
-   worth doing together before the bigger step below): short description text under each
-   `shared/stepper/` step saying what that screen lets you do; `/plans/:id` lays out the area/
-   activity/trip-details card and `<app-weather-forecast>` side by side (`row`/`col-md-6`, still
-   stacks on mobile) instead of one under the other, since neither needs full width; a search box
-   on `area-picker`'s map (place name → Leaflet `flyTo()`) so the user doesn't have to pan/zoom the
-   whole world by hand; the raw `AreaSummary` jargon ("Polygon with 6 points") on `/plans/:id`
-   replaced with a real place name — both this and the map search use **Nominatim** (OpenStreetMap's
-   own free reverse/forward geocoding, same free-API family as Overpass/Open-Meteo, needs the same
-   explicit `User-Agent` header Overpass required); and `PoiService` skips Overpass elements with no
-   `name` tag before caching/returning them — an unnamed tile isn't useful to the user and wastes
-   cache rows (accepted trade-off: some real but unnamed OSM features, e.g. a bare `tourism=
-   trailhead` node, will now be silently dropped).
+4. ✅ **UX polish batch** (agreed 2026-07-20, five small/independent tweaks, no big design forks —
+   done together before the bigger step below): short description text under each `shared/stepper/`
+   step saying what that screen lets you do (only the *current* step's, sourced from
+   `StepperStep.description`, not all steps at once — keeps the horizontal layout clean); `/plans/:id`
+   lays out the area/activity/trip-details card and `<app-weather-forecast>` side by side (`row` +
+   `col-lg-6` each, `h-100` so both cards match height — stacks below `lg`, weather's own card border
+   added to match the info card's for visual parity now that they sit next to each other) instead of
+   one under the other, since neither needs full width; a search box on `area-picker`'s map (plain
+   template-ref input, no `FormsModule`/`ngModel` needed for one transient field — `map.fitBounds()`
+   when Nominatim returns a bounding box, e.g. for a whole region like "Karkonosze", else
+   `map.flyTo()`) so the user doesn't have to pan/zoom the whole world by hand; the raw `AreaSummary`
+   jargon ("Polygon with 6 points") on `/plans/:id` replaced with a real reverse-geocoded place name
+   (`rxResource` keyed on `center()`, e.g. "Kraków — Stare Miasto" — built from Nominatim's
+   structured `address` fields, not its own much longer `display_name`) — `AreaSummary` itself is
+   untouched and still used as-is on `area-picker`, where technical drawing feedback ("6 points") is
+   still the right call; both the search and the place name use a new standalone **`GeocodingModule`**
+   (`backend/src/geocoding/`, `GET /geocode/search`, `GET /geocode/reverse`) wrapping **Nominatim**
+   (OpenStreetMap's own free geocoding, same free-API family as Overpass/Open-Meteo). **Browsers
+   refuse to let `fetch()` set a custom `User-Agent` header** (forbidden header name) — since
+   Nominatim's usage policy requires identifying the app via that header exactly like Overpass does,
+   these calls have to go through the backend (Node's `fetch` has no such restriction), same pattern
+   as every other external API in this app; there's no frontend-only way to do this. And
+   `PoiService` skips Overpass elements with no `name` tag before caching/returning them — an
+   unnamed tile isn't useful to the user and wastes cache rows (accepted trade-off: some real but
+   unnamed OSM features, e.g. a bare `tourism=trailhead` node, are now silently dropped); existing
+   `"Unnamed POI"` rows were manually flushed from the dev DB, same one-off-cleanup precedent as the
+   nightlife fix.
 5. **Editable `Area` + 3-step stepper** (agreed 2026-07-20, bigger — plan it properly rather than
    bolting it on): extend `shared/stepper/` to include `area-picker` as a real step 1, not just a
    visual label — clicking back to "Obszar" from `activities`/`trip-details` should show and let you
@@ -192,6 +206,11 @@ type-balanced but not distance-sorted from the area's center).
 - **Weather = Open-Meteo** — free, no API key required.
 - **POI / trails / monuments / restaurants = OpenStreetMap + Overpass API** — free, matches the
   no-cost/open-source constraint.
+- **Geocoding (map search + reverse place names) = Nominatim** — OpenStreetMap's own free
+  geocoding service, same free/no-key family as Overpass and Open-Meteo. Proxied through a new
+  backend `GeocodingModule` rather than called directly from the frontend — browsers block
+  `fetch()` from setting a custom `User-Agent` header, which Nominatim's usage policy requires
+  (identical constraint to Overpass).
 - Frontend/backend talk over plain HTTP; no BFF or GraphQL layer planned.
 - **Auth is not a hard gate** — this app follows the modern-SPA pattern (like Figma/Notion/Canva):
   unauthenticated users can see and use most features (pick an area, get a generic overview)

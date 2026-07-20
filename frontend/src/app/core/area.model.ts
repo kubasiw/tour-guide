@@ -7,6 +7,13 @@ export type Area =
   | { kind: 'polygon'; points: LatLng[] }
   | { kind: 'radius'; center: LatLng; radiusMeters: number };
 
+export interface BoundingBox {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
 export function areaCenter(area: Area): LatLng {
   if (area.kind === 'radius') {
     return area.center;

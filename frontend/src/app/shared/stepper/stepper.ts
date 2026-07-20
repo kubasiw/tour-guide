@@ -1,8 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 export interface StepperStep {
   label: string;
+  description: string;
   routerLink: string[];
   completed: boolean;
   current: boolean;
@@ -16,4 +17,8 @@ export interface StepperStep {
 })
 export class Stepper {
   public readonly steps = input.required<StepperStep[]>();
+
+  protected readonly currentDescription = computed(
+    () => this.steps().find((step) => step.current)?.description,
+  );
 }

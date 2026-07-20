@@ -104,13 +104,14 @@ export class PoiService {
 
   private async upsertElement(element: OverpassElement): Promise<Poi | null> {
     const type = this.classify(element.tags);
-    if (!type) {
+    const name = element.tags?.name;
+    if (!type || !name) {
       return null;
     }
 
     const osmId = `${element.type}/${element.id}`;
     const data = {
-      name: element.tags?.name ?? 'Unnamed POI',
+      name,
       type,
       lat: element.lat,
       lng: element.lon,

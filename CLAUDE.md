@@ -428,6 +428,14 @@ is complete; work now moves to "Beyond MVP" below.
     map popup has no interactive button → "Edytuj plan" returns to the working view →
     `plan-detail`'s persistent link works on a revisit → zero-item empty state → both mobile and
     desktop width, no horizontal overflow).
+    **Known UI bug, not yet fixed (user-reported 2026-07-21):** in `poi-picker`, the
+    "Zakończ planowanie"/"Zobacz podsumowanie" button and the "Wygeneruj podsumowanie AI" button
+    sit right next to each other with poor visibility (both plain `btn-outline-secondary btn-sm`,
+    blending together) and no spacing between them. Needs a real pass: at minimum a gap (e.g. `gap-2`
+    on their wrapper or a margin utility) and reconsidering whether the finalize action — a more
+    significant, less reversible step than "generate a narration" — should visually stand out more
+    (e.g. `btn-accent`, matching how other primary actions in this app use the accent color rather
+    than the muted outline-secondary style).
 12. ✅ **Adaptive per-region theming (2026-07-21)** — `AiService.generateAreaDescription` now
     returns `{ description, theme }` from a **single combined Claude call** rather than two (the
     system prompt requires a fixed `THEME: <label>` first line, parsed with a regex; falls back to

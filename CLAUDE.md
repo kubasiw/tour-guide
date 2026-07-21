@@ -396,9 +396,14 @@ is complete; work now moves to "Beyond MVP" below.
 13. **Harden auth: password confirmation + forgot/change password** (captured 2026-07-21, prompted
     by a real incident — forgot a password with no recovery path, had to manually delete the
     account from the dev DB to register again). Today's `auth/` (Faza 1 step 2) is deliberately
-    simple email+password+JWT with none of this. Three pieces, not all the same size: (a) a
-    password-confirmation field on `register` (retype password, client-side match validation) —
-    trivial, no backend changes, not built yet. (b) ✅ **Forgot password (2026-07-21)** — real
+    simple email+password+JWT with none of this. Three pieces, not all the same size: (a) ✅
+    **Password confirmation at registration (2026-07-21)** — `register`'s form gained a
+    `confirmPassword` field and a `FormGroup`-level `passwordsMatchValidator` (identical shape to
+    `reset-password`'s own cross-field validator, added moments earlier in the same session —
+    copy-pasted the pattern deliberately rather than extracting a shared helper for two call
+    sites). Frontend-only, no backend changes — `submit()`'s `getRawValue()` destructure already
+    only pulled `email`/`password`, so `confirmPassword` naturally never reaches
+    `AuthService.register()`. (b) ✅ **Forgot password (2026-07-21)** — real
     reset-token flow. New `PasswordResetToken` model (`userId`, `user` relation with
     `onDelete: Cascade` — tokens are ephemeral/dependent data, unlike `Plan`'s deliberately
     non-cascading `User` relation; direct lesson from the FK-constraint block hit deleting a user

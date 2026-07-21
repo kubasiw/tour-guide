@@ -1,10 +1,25 @@
 import { Component, inject, signal } from '@angular/core';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators,
+} from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../auth.service';
 import { Loader } from '../../shared/loader/loader';
 import { extractErrorMessage } from '../../core/http-error';
+
+const passwordsMatchValidator: ValidatorFn = (control: AbstractControl): ValidationErrors | null => {
+  const password = control.get('password')?.value as string | undefined;
+  const confirmPassword = control.get('confirmPassword')?.value as string | undefined;
+  return password && confirmPassword && password !== confirmPassword
+    ? { passwordsMismatch: true }
+    : null;
+};
 
 @Component({
   selector: 'app-register',
@@ -20,13 +35,20 @@ export class Register {
   protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
 
-  protected readonly form = this.formBuilder.nonNullable.group({
-    email: [
-      '',
-      [(c: AbstractControl) => Validators.required(c), (c: AbstractControl) => Validators.email(c)],
-    ],
-    password: ['', [(c: AbstractControl) => Validators.required(c), Validators.minLength(8)]],
-  });
+  protected readonly form = this.formBuilder.nonNullable.group(
+    {
+      email: [
+        '',
+        [
+          (c: AbstractControl) => Validators.required(c),
+          (c: AbstractControl) => Validators.email(c),
+        ],
+      ],
+      password: ['', [(c: AbstractControl) => Validators.required(c), Validators.minLength(8)]],
+      confirmPassword: ['', [(c: AbstractControl) => Validators.required(c)]],
+    },
+    { validators: passwordsMatchValidator },
+  );
 
   protected submit(): void {
     if (this.form.invalid) {

@@ -32,6 +32,21 @@
       <div class="invalid-feedback">Password must be at least 8 characters.</div>
     </div>
 
+    <div class="mb-3">
+      <label for="confirmPassword" class="form-label">Confirm password</label>
+      <input
+        id="confirmPassword"
+        type="password"
+        class="form-control"
+        formControlName="confirmPassword"
+        [class.is-invalid]="
+          form.controls.confirmPassword.touched &&
+          (form.controls.confirmPassword.invalid || form.errors?.['passwordsMismatch'])
+        "
+      />
+      <div class="invalid-feedback">Passwords must match.</div>
+    </div>
+
     @if (submitting()) {
       <app-loader variant="spinner" />
     } @else {

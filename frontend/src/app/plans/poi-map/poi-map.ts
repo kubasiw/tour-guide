@@ -17,6 +17,7 @@ const DEFAULT_CENTER: L.LatLngExpression = [50.06, 19.94];
 const DEFAULT_ZOOM = 13;
 const MARKER_RADIUS = 8;
 const SELECTED_MARKER_RADIUS = 10;
+const HOVERED_MARKER_RADIUS = 12;
 
 @Component({
   selector: 'app-poi-map',
@@ -26,13 +27,16 @@ const SELECTED_MARKER_RADIUS = 10;
 export class PoiMap {
   public readonly pois = input.required<Poi[]>();
   public readonly selectedPoiIds = input.required<Set<string>>();
+  public readonly hoveredPoiId = input<string | null>(null);
   public readonly toggled = output<Poi>();
+  public readonly poiHovered = output<string | null>();
 
   private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>('mapContainer');
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly mapSignal = signal<L.Map | undefined>(undefined);
   private markersLayer?: L.LayerGroup;
+  private readonly markersByPoiId = new Map<string, L.CircleMarker>();
 
   public constructor() {
     afterNextRender(() => this.initMap());
@@ -43,6 +47,18 @@ export class PoiMap {
       const selectedIds = this.selectedPoiIds();
       if (map) {
         this.renderMarkers(map, pois, selectedIds);
+      }
+    });
+
+    effect(() => {
+      const hoveredId = this.hoveredPoiId();
+      const selectedIds = this.selectedPoiIds();
+      for (const [poiId, marker] of this.markersByPoiId) {
+        const hovered = poiId === hoveredId;
+        marker.setStyle(this.markerStyle(selectedIds.has(poiId), hovered));
+        if (hovered) {
+          marker.bringToFront();
+        }
       }
     });
   }
@@ -68,20 +84,24 @@ export class PoiMap {
 
   private renderMarkers(map: L.Map, pois: Poi[], selectedIds: Set<string>): void {
     this.markersLayer?.remove();
+    this.markersByPoiId.clear();
     const layer = L.layerGroup();
+    const hoveredId = this.hoveredPoiId();
 
     for (const poi of pois) {
       const selected = selectedIds.has(poi.id);
       const marker = L.circleMarker([poi.lat, poi.lng], {
-        radius: selected ? SELECTED_MARKER_RADIUS : MARKER_RADIUS,
-        color: selected ? '#e0973d' : '#ffffff',
-        weight: selected ? 3 : 1,
+        ...this.markerStyle(selected, poi.id === hoveredId),
         fillColor: POI_TYPE_MARKER_COLORS[poi.type],
         fillOpacity: 0.9,
       });
 
       marker.bindPopup(this.buildPopupContent(poi, selected));
+      marker.on('mouseover', () => this.poiHovered.emit(poi.id));
+      marker.on('mouseout', () => this.poiHovered.emit(null));
+
       layer.addLayer(marker);
+      this.markersByPoiId.set(poi.id, marker);
     }
 
     layer.addTo(map);
@@ -91,6 +111,14 @@ export class PoiMap {
       const bounds = L.latLngBounds(pois.map((poi): L.LatLngTuple => [poi.lat, poi.lng]));
       map.fitBounds(bounds, { padding: [24, 24] });
     }
+  }
+
+  private markerStyle(selected: boolean, hovered: boolean): L.CircleMarkerOptions {
+    return {
+      radius: hovered ? HOVERED_MARKER_RADIUS : selected ? SELECTED_MARKER_RADIUS : MARKER_RADIUS,
+      color: selected ? '#e0973d' : '#ffffff',
+      weight: selected ? 3 : 1,
+    };
   }
 
   private buildPopupContent(poi: Poi, selected: boolean): HTMLElement {

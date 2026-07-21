@@ -35,7 +35,9 @@ export class PoiPicker {
 
   protected readonly orderedItems = signal<PlanItemWithPoi[]>([]);
 
-  protected readonly viewMode = signal<'grid' | 'map'>('grid');
+  protected readonly viewMode = signal<'grid' | 'map' | 'split'>('grid');
+
+  protected readonly hoveredPoiId = signal<string | null>(null);
 
   protected readonly selectedPoiIds = computed(
     () => new Set((this.items.value() ?? []).map((item) => item.poi.id)),

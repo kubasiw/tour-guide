@@ -3,7 +3,10 @@
   class="poi-tile card h-100 text-start border-0"
   [class]="colorClass()"
   [class.poi-tile--selected]="selected()"
+  [class.poi-tile--hovered]="hovered()"
   (click)="toggled.emit()"
+  (mouseenter)="hoverChange.emit(true)"
+  (mouseleave)="hoverChange.emit(false)"
 >
   <div class="card-body p-2 position-relative">
     @if (selected()) {

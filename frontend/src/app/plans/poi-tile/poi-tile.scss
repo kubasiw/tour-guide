@@ -18,6 +18,10 @@
   border-color: v.$accent;
 }
 
+.poi-tile--hovered {
+  box-shadow: 0 0 0 3px rgba(v.$accent, 0.5);
+}
+
 .poi-tile__badge {
   position: absolute;
   top: 0.5rem;

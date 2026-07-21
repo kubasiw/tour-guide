@@ -309,6 +309,23 @@ is complete; work now moves to "Beyond MVP" below.
     whole component is freshly created each time). **Accepted limitation, not built:** marker
     clustering — candidates can render as visually overlapping dots when close together; fine for a
     first pass at `MAX_CANDIDATES = 24`, revisit if it becomes a real usability problem.
+    **Follow-up (2026-07-21), also done: split view with live hover sync.** Third `viewMode`
+    (`'split'`, `bi-layout-split` icon) — half tile grid, half map (`row`/`col-12 col-lg-6` ×2, same
+    stacking-below-`lg` precedent as `plan-detail.html`'s info/weather layout), hovering either side
+    highlights the other in real time (Airbnb/Zillow-style linked list+map). `PoiTile` gained
+    `hovered` input / `hoverChange` output (native `(mouseenter)`/`(mouseleave)`, orthogonal to its
+    existing pure-CSS `:hover` lift); `PoiMap` gained `hoveredPoiId` input / `poiHovered` output
+    (Leaflet `mouseover`/`mouseout` per marker). **Deliberately not a full marker-layer rebuild on
+    hover** — hover fires far more often than selection changes (every mouse-move across the grid),
+    so `PoiMap` keeps a `Map<string, L.CircleMarker>` keyed by POI id and a *separate*, lightweight
+    `effect()` that only calls `.setStyle()`/`.bringToFront()` on the specific markers affected,
+    never a teardown/recreate — a shared private `markerStyle(selected, hovered)` helper avoids
+    duplicating the radius/color logic between this path and the existing full-rebuild path. Hover
+    always renders as the biggest radius regardless of selected state, so a selected+hovered marker
+    shows both cues at once without clashing. **Deliberately not hiding the split toggle on
+    mobile** — hover doesn't exist on touch and a side-by-side split is cramped narrow, but below
+    `lg` it just stacks (grid above, map below) via the same responsive columns, which is still a
+    perfectly usable view; no extra code to detect/hide it on small screens.
 11. Adaptive per-region theming on the generated plan view, once AI can classify an area's
     character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 

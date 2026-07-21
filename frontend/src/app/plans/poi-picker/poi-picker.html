@@ -57,6 +57,15 @@
       >
         <i class="bi bi-map"></i>
       </button>
+      <button
+        type="button"
+        class="btn btn-sm"
+        [class.btn-accent]="viewMode() === 'split'"
+        [class.btn-outline-secondary]="viewMode() !== 'split'"
+        (click)="viewMode.set('split')"
+      >
+        <i class="bi bi-layout-split"></i>
+      </button>
     </div>
   </div>
 
@@ -73,12 +82,51 @@
       <div class="row row-cols-2 row-cols-md-4 g-2">
         @for (poi of pois; track poi.id) {
           <div class="col">
-            <app-poi-tile [poi]="poi" [selected]="isSelected(poi)" (toggled)="toggle(poi)" />
+            <app-poi-tile
+              [poi]="poi"
+              [selected]="isSelected(poi)"
+              [hovered]="hoveredPoiId() === poi.id"
+              (toggled)="toggle(poi)"
+              (hoverChange)="hoveredPoiId.set($event ? poi.id : null)"
+            />
           </div>
         }
       </div>
+    } @else if (viewMode() === 'map') {
+      <app-poi-map
+        [pois]="pois"
+        [selectedPoiIds]="selectedPoiIds()"
+        [hoveredPoiId]="hoveredPoiId()"
+        (toggled)="toggle($event)"
+        (poiHovered)="hoveredPoiId.set($event)"
+      />
     } @else {
-      <app-poi-map [pois]="pois" [selectedPoiIds]="selectedPoiIds()" (toggled)="toggle($event)" />
+      <div class="row g-3">
+        <div class="col-12 col-lg-6">
+          <div class="row row-cols-2 g-2">
+            @for (poi of pois; track poi.id) {
+              <div class="col">
+                <app-poi-tile
+                  [poi]="poi"
+                  [selected]="isSelected(poi)"
+                  [hovered]="hoveredPoiId() === poi.id"
+                  (toggled)="toggle(poi)"
+                  (hoverChange)="hoveredPoiId.set($event ? poi.id : null)"
+                />
+              </div>
+            }
+          </div>
+        </div>
+        <div class="col-12 col-lg-6">
+          <app-poi-map
+            [pois]="pois"
+            [selectedPoiIds]="selectedPoiIds()"
+            [hoveredPoiId]="hoveredPoiId()"
+            (toggled)="toggle($event)"
+            (poiHovered)="hoveredPoiId.set($event)"
+          />
+        </div>
+      </div>
     }
   }
 </div>

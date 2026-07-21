@@ -425,9 +425,27 @@ is complete; work now moves to "Beyond MVP" below.
     `newPassword`/`confirmPassword` fields with a `FormGroup`-level cross-field
     `passwordsMatchValidator`), both mirroring `login`/`register`'s exact
     `FormBuilder`/`submitting`/`errorMessage`/`extractErrorMessage`/`<app-loader variant="spinner">`
-    pattern; a "Zapomniałeś hasła?" link added to `login`. (c) A "change password" endpoint for
-    already-logged-in users — still not built, also needs a home since there's no account/settings
-    screen anywhere in the app yet either.
+    pattern; a "Zapomniałeś hasła?" link added to `login`. (c) ✅ **Change password
+    (2026-07-21)** — `AuthService.changePassword(email, currentPassword, newPassword)` verifies
+    the current password via `bcrypt.compare` (throws `UnauthorizedException` on mismatch, same
+    generic-shape pattern as `login`'s own invalid-credentials error) then reuses the existing
+    `UsersService.updatePassword` already built for the reset-password flow — no new
+    `UsersService` method needed. `POST /auth/change-password` is hard `JwtAuthGuard`-gated (unlike
+    forgot/reset, which are inherently unauthenticated) and reads the acting user's email via the
+    existing `@CurrentUser()` decorator rather than trusting a client-supplied id. Frontend: new
+    `auth/change-password/` mirrors `reset-password`'s exact shape (a `newPassword`/
+    `confirmPassword` cross-field `passwordsMatchValidator`, deliberately copy-pasted again rather
+    than extracted — now three near-identical validators across `register`/`reset-password`/
+    `change-password`; worth extracting into a shared `shared/validators/` helper if a fourth call
+    site ever shows up, not before). **First entry point into an account-scoped settings area** —
+    since none existed yet, added a small icon-only gear button (`bi-gear-fill`, `aria-label`/
+    `title="Zmień hasło"`) to the authenticated nav in `app.html`, between the email span and "Log
+    out". Icon-only (not text, unlike "Moje plany") was a deliberate choice to keep it narrow
+    regardless of screen width, rather than the `d-none d-sm-inline` hide-below-breakpoint pattern
+    `my-plans/`'s nav addition used — confirmed via `document.documentElement.scrollWidth -
+    clientWidth === 0` at 320px that this 4th nav item doesn't reintroduce the overflow regression
+    documented under `my-plans/` above. `{ path: 'change-password', canActivate: [authGuard] }` —
+    genuinely account-bound, same reasoning as `my-plans/`.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

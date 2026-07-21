@@ -7,6 +7,14 @@
       @if (authService.isAuthenticated()) {
         <a routerLink="/my-plans" class="btn btn-outline-secondary me-2">Moje plany</a>
         <span class="navbar-text me-3 d-none d-sm-inline">{{ authService.me.value()?.email }}</span>
+        <a
+          routerLink="/change-password"
+          class="btn btn-outline-secondary me-2"
+          aria-label="Zmień hasło"
+          title="Zmień hasło"
+        >
+          <i class="bi bi-gear-fill"></i>
+        </a>
         <button type="button" class="btn btn-outline-secondary" (click)="authService.logout()">
           Log out
         </button>

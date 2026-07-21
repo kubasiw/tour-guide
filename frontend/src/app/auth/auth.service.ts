@@ -55,6 +55,16 @@ export class AuthService {
     });
   }
 
+  public changePassword(
+    currentPassword: string,
+    newPassword: string,
+  ): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${API_BASE_URL}/auth/change-password`, {
+      currentPassword,
+      newPassword,
+    });
+  }
+
   public setToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
     this.tokenSignal.set(token);

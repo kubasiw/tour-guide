@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { ActivitySelector } from './activity-selector/activity-selector';
 import { AreaPicker } from './area-picker/area-picker';
 import { authGuard } from './auth/auth.guard';
+import { ChangePassword } from './auth/change-password/change-password';
 import { ForgotPassword } from './auth/forgot-password/forgot-password';
 import { Login } from './auth/login/login';
 import { Register } from './auth/register/register';
@@ -17,6 +18,7 @@ export const routes: Routes = [
   { path: 'forgot-password', component: ForgotPassword },
   { path: 'reset-password', component: ResetPassword },
   { path: 'my-plans', component: MyPlans, canActivate: [authGuard] },
+  { path: 'change-password', component: ChangePassword, canActivate: [authGuard] },
   { path: 'plans/:id/area', component: AreaPicker },
   { path: 'plans/:id/activities', component: ActivitySelector },
   { path: 'plans/:id/trip-details', component: TripDetails },

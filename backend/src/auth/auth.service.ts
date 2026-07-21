@@ -97,6 +97,22 @@ export class AuthService {
     return { message: 'Hasło zostało zmienione.' };
   }
 
+  public async changePassword(
+    email: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.usersService.findByEmail(email);
+    if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('Nieprawidłowe obecne hasło.');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+    await this.usersService.updatePassword(user.id, passwordHash);
+
+    return { message: 'Hasło zostało zmienione.' };
+  }
+
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }

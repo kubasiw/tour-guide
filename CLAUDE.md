@@ -200,11 +200,47 @@ is complete; work now moves to "Beyond MVP" below.
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
    gated behind login, for cost control this time (anonymous users get a non-LLM overview instead).
-   **Scope note (2026-07-20):** this is also where the short AI-written area description belongs
-   (e.g. "Kraków — Stare Miasto" plus a couple of honest, non-generic sentences) — the place *name*
-   ships earlier in step 4 above via free Nominatim geocoding, but the *description* needs the LLM
-   this step builds, and inherits its login-gating; don't build an early/separate AI call just for
-   this one field.
+   **First slice done (2026-07-21): short AI-written area description.** New standalone
+   `AiModule` (`backend/src/ai/`, mirrors `GeocodingModule`'s shape) wraps `@anthropic-ai/sdk` —
+   `AiService.generateAreaDescription(placeName)` calls `claude-haiku-4-5-20251001` (cheap/fast,
+   appropriate for a short non-critical text snippet) with a system prompt instructing 2-3 honest,
+   non-generic sentences about the area's general character, explicitly told not to invent specific
+   named places/facts (avoids hallucination, matches the brief's "retrieve then generate"
+   principle). `Plan` gained `aiDescription String?` / `aiDescriptionGeneratedAt DateTime?` —
+   `PlansService.getAiDescription(id)` returns the cached value if already generated, else computes
+   `areaCenter` → `GeocodingService.reverse()` for the place name → `AiService`, persists, and
+   returns it (cache-forever, no TTL, no regeneration — same "accepted, revisit if it matters"
+   precedent as `PoiService`'s cache-first limitation). `GET /plans/:id/ai-description` is a hard
+   login gate (`JwtAuthGuard`, not `OptionalJwtAuthGuard`) per the brief's AI-gating decision — any
+   valid account works, not just the plan's owner, consistent with every other `plans/:id` endpoint.
+   Frontend: `PlanDetail` gates the whole section on `AuthService.isAuthenticated()` in the
+   `rxResource`'s `params` function so the resource simply never fires for anonymous users (zero
+   401 network noise, verified via `read_network_requests`) rather than firing-and-handling-401.
+   **Deliberately not doing:** invalidating the cached description when the plan's `Area` is later
+   edited via `PATCH /plans/:id/area` — same no-cascading-resets precedent as that endpoint's own
+   note above. **Gotcha hit during this step:** `backend/.env`'s `DATABASE_URL` line had a stray
+   `ANTHROPIC_API_KEY="sk-ant-..."` placeholder fragment appended to the *same physical line* with
+   no newline (from an earlier accidental edit) — dotenv's multiline-value parsing greedily matched
+   from `DATABASE_URL`'s opening quote all the way to the *last* quote in the file, silently
+   swallowing everything in between into one corrupted value. NestJS's own `ConfigModule` tolerated
+   it (or wasn't exercised in a way that surfaced it), but the Prisma CLI's `dotenv/config` loading
+   in `prisma.config.ts` errored with a raw Postgres syntax error mentioning `ANTHROPIC_API_KEY`.
+   Diagnosed by running `dotenv` directly in a one-off `node -e` script and printing
+   `DATABASE_URL`'s *length* and whether it `.includes('ANTHROPIC')` — never printing the actual
+   secret values. Fixed with a targeted `sed` removing only the known-safe placeholder literal
+   `ANTHROPIC_API_KEY="sk-ant-..."` from the end of the `DATABASE_URL` line, leaving the real key
+   (on its own line further down) untouched. Worth remembering: a single-line env var value that
+   silently absorbs everything after it is very hard to spot from `cat`/`grep` alone since each
+   *individual* var still looks fine — count quote characters per line (`grep -o '"' | wc -l`,
+   should be even, exactly 2 for a simple quoted value) when something like this happens again.
+   **Not yet built:** the rule-based-narration layer on `PlanGeneratorModule`'s candidates, and
+   `PlanChatModule`'s tool-calling plan-editing assistant — see the note below for why these are
+   separate, bigger pieces of this same step.
+   **Scope note (2026-07-20):** narration/chat need real design before starting (the current data
+   model has no day structure — `PlanItem.dayNumber` is nullable/unused since the manual-selection
+   redesign in step 3 — so "AI narrates the day" from the original brief needs rethinking against
+   what's actually there now). The place *name* itself ships via free Nominatim geocoding (step 4);
+   only the *description* needed the LLM this step builds.
 9. Adaptive per-region theming on the generated plan view, once AI can classify an area's
    character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 
@@ -311,7 +347,8 @@ type-balanced but not distance-sorted from the area's center).
   server-side only in a new `AiModule`). This is genuinely gated behind login — `my-plans/` (see the
   Roadmap above) already established the `authGuard`/`JwtAuthGuard`/`@CurrentUser()` pattern this
   reuses — unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract) to
-  keep anonymous traffic free of API cost.
+  keep anonymous traffic free of API cost. **First slice built (2026-07-21)** — see the Roadmap's
+  step 8 note above for the short AI-written area description; narration/chat are still ahead.
 
 ## Commands
 

@@ -59,4 +59,12 @@ export class PlansController {
   ): Promise<PlanWithArea> {
     return this.plansService.updateArea(id, dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/ai-description')
+  public getAiDescription(
+    @Param('id') id: string,
+  ): Promise<{ description: string }> {
+    return this.plansService.getAiDescription(id);
+  }
 }

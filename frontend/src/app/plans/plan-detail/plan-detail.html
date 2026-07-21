@@ -18,6 +18,18 @@
               </p>
             }
 
+            @if (authService.isAuthenticated()) {
+              @if (aiDescription.isLoading()) {
+                <app-loader variant="spinner" />
+              } @else if (aiDescription.error()) {
+                <ngb-alert type="danger" class="small py-2 mt-2" [dismissible]="false">
+                  Nie udało się wygenerować opisu AI.
+                </ngb-alert>
+              } @else if (aiDescription.value(); as desc) {
+                <p class="mt-2 mb-0 fst-italic">{{ desc.description }}</p>
+              }
+            }
+
             @if (value.activities.length > 0) {
               <div class="mt-3">
                 <h2 class="h6">Aktywności</h2>

@@ -59,6 +59,15 @@ is complete; work now moves to "Beyond MVP" below.
    map (`backend/src/poi/overpass-tags.ts`) covering the brief's 5 `PoiType`s (`trail`, `monument`,
    `restaurant`, `shelter`, `accommodation`) — `way`/`relation` geometries (e.g. real trail paths)
    are deferred; a `tourism=trailhead` node is used as a `trail` proxy for now.
+   **Idea captured, not built (2026-07-21):** the real fix for the trail-proxy limitation above —
+   [Waymarked Trails](https://hiking.waymarkedtrails.org/) is a free, OSM-based API
+   ([waymarkedtrails-api](https://github.com/waymarkedtrails/waymarkedtrails-api) on GitHub) that
+   serves actual hiking/cycling/MTB route *geometries* (real paths, not just trailhead points) —
+   same free/no-key family as Overpass/Nominatim/Open-Meteo already used in this app. A genuinely
+   separate integration from AI narration (new external API, new geometry type for `PlanItem`/the
+   map), not something to fold into that work. Before building: confirm the exact endpoint/response
+   shape with a live curl first, same precedent as Overpass QL was confirmed early on — don't
+   assume the API shape from documentation/memory alone.
 3. ✅ `PlanGeneratorModule` — `GET /plans/:id/candidates` maps the plan's `activities` to
    `PoiType`s (`plan-generator/activity-poi-mapping.ts`), fetches matches via
    `PoiService.findInBoundingBox`, and returns them balanced round-robin across the matched
@@ -81,6 +90,16 @@ is complete; work now moves to "Beyond MVP" below.
    external integration most POI types won't even have data for; tiles get a type-styled
    icon+color placeholder instead. Google ratings/photos remain a separate, deferred decision (not
    forgotten, see the AI integration note below for the same "free vs. paid API" tension).
+   **Idea captured, not built (2026-07-21):** user asked whether `PoiTile` should also show a short
+   description alongside name/icon, not just opening hours. Two possible sources, neither built
+   yet: (a) OSM's own `description`/`note` tags via Overpass when present (free, but sparse — most
+   POIs won't have one), or (b) the per-POI AI description caching already noted in the "AI
+   integration" section below (`Poi.aiDescription`/`aiDescriptionGeneratedAt`, originally deferred
+   until `AiModule` existed — it now does, since step 8's first slice, so this is no longer blocked
+   on that). Revisit and decide the concrete source/scope when actually building this — likely
+   worth trying the free OSM-tag route first, given `PoiTile` can render up to `MAX_CANDIDATES = 24`
+   tiles at once and a naive "generate on first render" AI approach would mean up to 24 LLM calls
+   per page load unless carefully cached/batched.
    **Idea captured, not built (2026-07-20):** a small map preview on every pre-generation screen
    (`activity-selector`, `trip-details`), not just `area-picker` — user's own framing was that this
    could later double as a way to show selected attractions/trails once `PlanItem`s carry real
@@ -150,6 +169,25 @@ is complete; work now moves to "Beyond MVP" below.
    independently as today, or one combined save). Worth doing as its own deliberate UX pass rather
    than folding it into an unrelated step — revisit and decide timing/phasing then, don't build it
    as a side effect of other work.
+   **Reinforced with a concrete entry point (2026-07-21):** user's follow-up framing — add a small
+   edit affordance (`+`/pencil icon) directly on `plan-detail`'s info card, next to the place
+   name/activity badges/dates, so editing doesn't require hunting for the stepper. This part is low
+   risk and can ship standalone even before the single-view redesign above: the three edit routes
+   (`/plans/:id/area`, `/plans/:id/activities`, `/plans/:id/trip-details`) already exist and already
+   fully support editing an existing `Plan` (confirmed working end-to-end for area editing in step
+   5 itself) — the icon(s) just need to `routerLink` there. Once the single-view redesign happens,
+   this same icon would naturally become the entry point *into* that combined view instead.
+   **Also captured: switch trip dates from start-date-plus-duration to a real date-range picker**
+   (arrival + departure, not arrival + "number of nights" requiring mental math). Recommended
+   approach if/when this is built: change only `trip-details`'s **input UI** to a two-ended
+   calendar range picker — `@ng-bootstrap/ng-bootstrap`'s `NgbDatepicker` has a documented range-
+   selection recipe (two bound `NgbDate` values + comparison helpers), so no new dependency.
+   Deliberately **keep `Plan.startDate`/`durationDays` as the stored/API representation unchanged**
+   — computing `durationDays` from the picked end date is a pure client-side conversion at submit
+   time, so this stays a frontend-only UX change instead of a schema/DTO/backend migration touching
+   everywhere `durationDays` is already consumed (weather's context-days logic, the trip-date badge,
+   etc.) — smaller blast radius for the same user-facing improvement, matching this project's
+   "small, verifiable steps" philosophy.
 6. ✅ **`my-plans/`** (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, split out from "plan editing" below since the two don't depend on each
    other (reorder needs no auth, `my-plans/` needs no reorder) and each is substantial on its own.
@@ -237,9 +275,27 @@ is complete; work now moves to "Beyond MVP" below.
    silently absorbs everything after it is very hard to spot from `cat`/`grep` alone since each
    *individual* var still looks fine — count quote characters per line (`grep -o '"' | wc -l`,
    should be even, exactly 2 for a simple quoted value) when something like this happens again.
-   **Not yet built:** the rule-based-narration layer on `PlanGeneratorModule`'s candidates, and
-   `PlanChatModule`'s tool-calling plan-editing assistant — see the note below for why these are
-   separate, bigger pieces of this same step.
+   **Second slice done (2026-07-21): narration of the currently-selected plan.** Given
+   `PlanItem.dayNumber` is nullable/unused since the manual-selection redesign, "narrates the day"
+   from the original brief doesn't apply — instead a short (3-5 zdania) paragraph narrating
+   whatever's currently in "Twój plan", grounded in the real selected POI names/types (same
+   anti-hallucination instruction as the area description). `AiService.generatePlanNarration(items,
+   activities)` — a separate `NARRATION_MAX_TOKENS = 400` constant, not the area description's
+   `MAX_TOKENS = 200`, after a live curl test showed 200 cutting the longer narration off
+   mid-sentence. `PlanGeneratorService.generateNarration(planId)` (now injects `AiService`, so
+   `PlanGeneratorModule` imports `AiModule`) throws `BadRequestException` if the plan has zero
+   items yet; `POST /plans/:planId/narration`, hard `JwtAuthGuard` (same gating as the area
+   description). **Deliberately explicit-trigger, not cached or auto-generated:** unlike the area
+   description (generated once, cached forever), the selected-items set changes constantly during
+   editing — caching would go stale immediately and auto-regenerating on every add/remove/reorder
+   would fire unpredictable LLM costs. Frontend: a "Wygeneruj podsumowanie AI" button in
+   `poi-picker`'s "Twój plan" section (only shown when logged in and at least one item is
+   selected), calling `PlanService.generateNarration()` directly (plain `Observable` + `subscribe`,
+   not `rxResource` — matches the established "one-shot mutation triggered by a button" pattern,
+   not a reactively-recomputed resource) — deliberately minimal display (plain paragraph, no
+   dedicated styling pass); the polished presentation belongs to the new "finalized-plan summary
+   view" step (step 11 below), not this one.
+   **Not yet built:** `PlanChatModule`'s tool-calling plan-editing assistant.
    **Scope note (2026-07-20):** narration/chat need real design before starting (the current data
    model has no day structure — `PlanItem.dayNumber` is nullable/unused since the manual-selection
    redesign in step 3 — so "AI narrates the day" from the original brief needs rethinking against
@@ -326,8 +382,32 @@ is complete; work now moves to "Beyond MVP" below.
     mobile** — hover doesn't exist on touch and a side-by-side split is cramped narrow, but below
     `lg` it just stacks (grid above, map below) via the same responsive columns, which is still a
     perfectly usable view; no extra code to detect/hide it on small screens.
-11. Adaptive per-region theming on the generated plan view, once AI can classify an area's
-    character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
+11. **Finalized-plan summary view** (captured 2026-07-21, not built yet) — what happens once the
+    user is done editing and considers the plan final: a dedicated read-only summary screen (nice
+    AI-written descriptions, a map of the selected `PlanItem`s, distinct from today's editable
+    `poi-picker` working view). Sequenced right after AI narration (step 8) since narration's
+    output needs a home, and this is it — deliberately scoped as its own step rather than folded
+    into narration itself (agreed via `AskUserQuestion`: keep each step independently verifiable).
+    No design decisions made yet (what marks a plan "final," whether it's a new `Plan.status`
+    value, what exactly the summary shows) — design this properly when starting.
+12. Adaptive per-region theming on the generated plan view (i.e. the finalized-plan summary view
+    above, once it exists), once AI can classify an area's character — see the "Design direction"
+    bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
+13. **Harden auth: password confirmation + forgot/change password** (captured 2026-07-21, prompted
+    by a real incident — forgot a password with no recovery path, had to manually delete the
+    account from the dev DB to register again). Today's `auth/` (Faza 1 step 2) is deliberately
+    simple email+password+JWT with none of this. Three pieces, not all the same size: (a) a
+    password-confirmation field on `register` (retype password, client-side match validation) —
+    trivial, no backend changes. (b) A real "forgot password" flow — needs a reset-token model (new
+    Prisma table, expiring tokens) and *some* way to deliver the reset link, which is a genuinely
+    open question: this app has stuck to free/no-key APIs throughout and has no email-sending
+    integration yet. Likely start with logging the reset link to the backend console in dev rather
+    than wiring a real email provider, and revisit if this ever needs to work for real,
+    non-developer users. (c) A "change password" endpoint for already-logged-in users — also needs
+    a home, since there's no account/settings screen anywhere in the app yet either. Bigger than a
+    single step in practice — decide phasing when starting (most likely (a) first since it's
+    trivial and self-contained, (b)/(c) as a real follow-up once the email-delivery question is
+    answered).
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

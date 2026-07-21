@@ -58,4 +58,11 @@ export class PlanService {
       itemIds,
     });
   }
+
+  public generateNarration(planId: string): Observable<{ narration: string }> {
+    return this.http.post<{ narration: string }>(
+      `${API_BASE_URL}/plans/${planId}/narration`,
+      {},
+    );
+  }
 }

@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, input, signal } from '@angular/cor
 import { rxResource } from '@angular/core/rxjs-interop';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
+import { AuthService } from '../../auth/auth.service';
 import { extractErrorMessage } from '../../core/http-error';
 import { POI_TYPE_COLORS, POI_TYPE_ICONS, Poi } from '../../core/poi.model';
 import { Loader } from '../../shared/loader/loader';
@@ -20,6 +21,7 @@ export class PoiPicker {
   public readonly planId = input.required<string>();
 
   private readonly planService = inject(PlanService);
+  protected readonly authService = inject(AuthService);
 
   protected readonly candidates = rxResource({
     params: () => this.planId(),
@@ -38,6 +40,10 @@ export class PoiPicker {
   protected readonly viewMode = signal<'grid' | 'map' | 'split'>('grid');
 
   protected readonly hoveredPoiId = signal<string | null>(null);
+
+  protected readonly narration = signal<string | null>(null);
+  protected readonly narrationLoading = signal(false);
+  protected readonly narrationError = signal<string | null>(null);
 
   protected readonly selectedPoiIds = computed(
     () => new Set((this.items.value() ?? []).map((item) => item.poi.id)),
@@ -77,6 +83,22 @@ export class PoiPicker {
         error: (err: unknown) => this.toggleError.set(extractErrorMessage(err)),
       });
     }
+  }
+
+  protected generateNarration(): void {
+    this.narrationLoading.set(true);
+    this.narrationError.set(null);
+
+    this.planService.generateNarration(this.planId()).subscribe({
+      next: ({ narration }) => {
+        this.narrationLoading.set(false);
+        this.narration.set(narration);
+      },
+      error: (err: unknown) => {
+        this.narrationLoading.set(false);
+        this.narrationError.set(extractErrorMessage(err));
+      },
+    });
   }
 
   protected onDrop(event: CdkDragDrop<PlanItemWithPoi[]>): void {

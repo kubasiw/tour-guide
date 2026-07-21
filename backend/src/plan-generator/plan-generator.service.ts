@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 import { areaBoundingBox } from '../plans/area.type';
 import { PlansService } from '../plans/plans.service';
 import { Poi, PoiType } from '../poi/poi.types';
@@ -23,6 +24,7 @@ export class PlanGeneratorService {
     private readonly prisma: PrismaService,
     private readonly plansService: PlansService,
     private readonly poiService: PoiService,
+    private readonly aiService: AiService,
   ) {}
 
   public async findCandidates(planId: string): Promise<Poi[]> {
@@ -140,6 +142,26 @@ export class PlanGeneratorService {
     );
 
     return this.findItems(planId);
+  }
+
+  public async generateNarration(
+    planId: string,
+  ): Promise<{ narration: string }> {
+    const plan = await this.plansService.findOne(planId);
+    const items = await this.findItems(planId);
+
+    if (items.length === 0) {
+      throw new BadRequestException(
+        'Plan needs at least one item before it can be narrated',
+      );
+    }
+
+    const narration = await this.aiService.generatePlanNarration(
+      items.map((item) => ({ name: item.poi.name, type: item.poi.type })),
+      plan.activities,
+    );
+
+    return { narration };
   }
 
   private selectBalanced(

@@ -8,7 +8,9 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddPlanItemDto } from './dto/add-plan-item.dto';
 import { ReorderItemsDto } from './dto/reorder-items.dto';
 import { PlanGeneratorService } from './plan-generator.service';
@@ -56,5 +58,13 @@ export class PlanGeneratorController {
     @Body() dto: ReorderItemsDto,
   ): Promise<PlanItemWithPoi[]> {
     return this.planGeneratorService.reorderItems(planId, dto.itemIds);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('narration')
+  public generateNarration(
+    @Param('planId') planId: string,
+  ): Promise<{ narration: string }> {
+    return this.planGeneratorService.generateNarration(planId);
   }
 }

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
+import { AreaTheme } from '../ai/area-theme.type';
 import { GeocodingService } from '../geocoding/geocoding.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AreaDto } from './dto/area.dto';
@@ -134,7 +135,9 @@ export class PlansService {
     return this.toPlanWithArea(plan);
   }
 
-  public async getAiDescription(id: string): Promise<{ description: string }> {
+  public async getAiDescription(
+    id: string,
+  ): Promise<{ description: string; theme: AreaTheme }> {
     const plan = await this.prisma.plan.findUnique({
       where: { id },
       include: { area: true },
@@ -144,8 +147,11 @@ export class PlansService {
       throw new NotFoundException('Plan not found');
     }
 
-    if (plan.aiDescription) {
-      return { description: plan.aiDescription };
+    if (plan.aiDescription && plan.themePreset) {
+      return {
+        description: plan.aiDescription,
+        theme: plan.themePreset as AreaTheme,
+      };
     }
 
     const area = plan.area.geometry as unknown as Area;
@@ -155,7 +161,7 @@ export class PlansService {
       center.lng,
       estimateReverseZoom(area),
     );
-    const description = await this.aiService.generateAreaDescription(
+    const { description, theme } = await this.aiService.generateAreaDescription(
       place.displayName,
     );
 
@@ -164,10 +170,11 @@ export class PlansService {
       data: {
         aiDescription: description,
         aiDescriptionGeneratedAt: new Date(),
+        themePreset: theme,
       },
     });
 
-    return { description };
+    return { description, theme };
   }
 
   private toPlanWithArea(plan: PlanRecord): PlanWithArea {

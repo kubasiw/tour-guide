@@ -365,6 +365,14 @@ is complete; work now moves to "Beyond MVP" below.
     whole component is freshly created each time). **Accepted limitation, not built:** marker
     clustering — candidates can render as visually overlapping dots when close together; fine for a
     first pass at `MAX_CANDIDATES = 24`, revisit if it becomes a real usability problem.
+    **Known bug, not yet fixed (user-reported 2026-07-21):** clicking a POI marker's popup shows a
+    "Dodaj do planu"/"Usuń z planu" action button, but the popup closes as soon as the cursor
+    leaves the marker — before the button can actually be clicked, making the popup's own action
+    effectively unusable on desktop. Not yet root-caused (candidate suspects: the marker's
+    `mouseout` handler, or Leaflet's own popup-autoclose/map-click interaction — needs live
+    in-browser investigation, not guessed from reading the code). Revisit before relying on the
+    map's popup as a real add/remove affordance; the tile grid's toggle button is unaffected and
+    remains the reliable way to add/remove a POI in the meantime.
     **Follow-up (2026-07-21), also done: split view with live hover sync.** Third `viewMode`
     (`'split'`, `bi-layout-split` icon) — half tile grid, half map (`row`/`col-12 col-lg-6` ×2, same
     stacking-below-`lg` precedent as `plan-detail.html`'s info/weather layout), hovering either side
@@ -420,9 +428,44 @@ is complete; work now moves to "Beyond MVP" below.
     map popup has no interactive button → "Edytuj plan" returns to the working view →
     `plan-detail`'s persistent link works on a revisit → zero-item empty state → both mobile and
     desktop width, no horizontal overflow).
-12. Adaptive per-region theming on the generated plan view (i.e. the finalized-plan summary view
-    above, once it exists), once AI can classify an area's character — see the "Design direction"
-    bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
+12. ✅ **Adaptive per-region theming (2026-07-21)** — `AiService.generateAreaDescription` now
+    returns `{ description, theme }` from a **single combined Claude call** rather than two (the
+    system prompt requires a fixed `THEME: <label>` first line, parsed with a regex; falls back to
+    `theme: 'default'` if the line is missing or not one of the five curated `AreaTheme` values —
+    defensive against imperfect LLM formatting, never crashes). New `ai/area-theme.type.ts`:
+    `AreaTheme = 'coastal' | 'mountain-trail' | 'urban' | 'countryside' | 'default'` — AI only picks
+    the label, never generates CSS/colors (avoids broken contrast/dark-mode/component-consistency
+    risk, per the brief). `Plan.themePreset String?` (new migration, no new timestamp column —
+    reuses `aiDescriptionGeneratedAt`) is cached alongside `aiDescription` in the same
+    `PlansService.getAiDescription` call/cache-check (`if (plan.aiDescription && plan.themePreset)`
+    — both fields must be present, so the couple of already-cached dev-DB rows that predate this
+    field self-heal by regenerating once, no backfill migration needed).
+    **Verified with real, distinct classifications, not forced values** — curl-tested against real
+    plans centered on Zakopane (→ `mountain-trail`), Sopot beachfront (→ `coastal`), central Gdynia
+    (→ `urban`), and a wooded Gdynia suburb (→ `countryside`), each grounded in the actual
+    reverse-geocoded place name text, confirming the classification is real reasoning over retrieved
+    data, not a hardcoded guess. Frontend: new `core/area-theme.model.ts` (mirrors the backend
+    union + `AREA_THEME_ICONS`/`AREA_THEME_LABELS` lookup maps, verified against the installed
+    `bootstrap-icons` package rather than assumed from memory: `bi-water`, `bi-signpost-2-fill`,
+    `bi-building`, `bi-tree-fill`, `bi-geo-alt-fill` default). Applied **only** on
+    `plan-summary` (never `plan-detail`'s working view, per the brief's explicit scoping) via a
+    `theme-${theme}` class on the root container, driving a single `--theme-color` CSS custom
+    property scoped entirely to `plan-summary.scss` — a colored left border on the info card plus a
+    small icon+label tag ("Wybrzeże", "Górski szlak", "Miasto", "Wieś i natura"), both a deliberately
+    small, honest first slice rather than a full Bootstrap-variable rewrite. Anonymous (logged-out)
+    users get zero visual change (`themeClass` computed returns `''` when not authenticated, since
+    `aiDescription` never fires for them anyway — same AI-cost-gating precedent as everywhere else).
+    **Note for future theming/dark-mode work:** this app has no dark-mode implementation at all yet
+    — cards render white regardless of `prefers-color-scheme` — so a dark-mode contrast check was
+    inconclusive by necessity, not skipped; the chosen colors are safe mid-tones against the one
+    light surface that actually renders today.
+    **User feedback (2026-07-21): the four themes are hard to tell apart in practice.** The current
+    slice (a border-stripe color + a small icon+label tag) is too subtle to read as a real "the app
+    changed based on my location" moment — confirms the "deliberately small first slice" framing
+    above was *too* small, not just appropriately minimal. Revisit with a bolder visual treatment
+    (e.g. a themed hero banner/background tint behind the info card, not just a 4px border) next
+    time this area gets touched — don't just retune the four hex values, the *mechanism* (one thin
+    border) is likely the real limit, not the color choices.
 13. **Harden auth: password confirmation + forgot/change password** (captured 2026-07-21, prompted
     by a real incident — forgot a password with no recovery path, had to manually delete the
     account from the dev DB to register again). Today's `auth/` (Faza 1 step 2) is deliberately

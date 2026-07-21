@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_BASE_URL } from '../core/api-base-url';
 import { Area } from '../core/area.model';
+import { AreaTheme } from '../core/area-theme.model';
 import { Poi } from '../core/poi.model';
 import { Plan } from './plan.model';
 import { PlanItemWithPoi } from './plan-item.model';
@@ -37,8 +38,12 @@ export class PlanService {
     return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}/finalize`, {});
   }
 
-  public getAiDescription(id: string): Observable<{ description: string }> {
-    return this.http.get<{ description: string }>(`${API_BASE_URL}/plans/${id}/ai-description`);
+  public getAiDescription(
+    id: string,
+  ): Observable<{ description: string; theme: AreaTheme }> {
+    return this.http.get<{ description: string; theme: AreaTheme }>(
+      `${API_BASE_URL}/plans/${id}/ai-description`,
+    );
   }
 
   public getCandidates(id: string): Observable<Poi[]> {

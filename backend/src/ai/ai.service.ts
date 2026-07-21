@@ -1,6 +1,7 @@
 import { BadGatewayException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
+import { AREA_THEMES, AreaTheme } from './area-theme.type';
 
 const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_TOKENS = 200;
@@ -9,10 +10,16 @@ const MAX_TOKENS = 200;
 const NARRATION_MAX_TOKENS = 400;
 
 const SYSTEM_PROMPT =
-  'Piszesz krótkie, uczciwe opisy okolic dla aplikacji turystycznej. Napisz 2-3 zdania po polsku ' +
-  'o charakterze podanego miejsca — klimat, typ okolicy (np. historyczne centrum, wybrzeże, góry, ' +
-  'nowoczesna dzielnica). Nie wymyślaj konkretnych nazw miejsc, atrakcji, restauracji ani faktów, ' +
-  'których nie znasz na pewno — pisz ogólnie o charakterze okolicy. Bez nagłówków, bez list, sam tekst.';
+  'Piszesz krótkie, uczciwe opisy okolic dla aplikacji turystycznej. Odpowiedz w dokładnie takim ' +
+  'formacie: pierwsza linia "THEME: <etykieta>", potem pusta linia, potem 2-3 zdania opisu po ' +
+  'polsku. Etykieta w THEME musi być dokładnie jednym z tych słów: coastal, mountain-trail, urban, ' +
+  'countryside, default — wybierz tę, która najlepiej pasuje do charakteru miejsca (default, jeśli ' +
+  'żadna nie pasuje wyraźnie). W opisie skomentuj charakter podanego miejsca — klimat, typ okolicy ' +
+  '(np. historyczne centrum, wybrzeże, góry, nowoczesna dzielnica). Nie wymyślaj konkretnych nazw ' +
+  'miejsc, atrakcji, restauracji ani faktów, których nie znasz na pewno — pisz ogólnie o charakterze ' +
+  'okolicy. Bez nagłówków w opisie, bez list — tylko wskazany format.';
+
+const THEME_LINE_PATTERN = /^THEME:\s*(\S+)\s*\n+([\s\S]*)$/;
 
 const NARRATION_SYSTEM_PROMPT =
   'Piszesz krótkie, zachęcające podsumowania planów podróży dla aplikacji turystycznej. Dostajesz ' +
@@ -32,7 +39,9 @@ export class AiService {
     });
   }
 
-  public async generateAreaDescription(placeName: string): Promise<string> {
+  public async generateAreaDescription(
+    placeName: string,
+  ): Promise<{ description: string; theme: AreaTheme }> {
     try {
       const response = await this.client.messages.create({
         model: MODEL,
@@ -46,7 +55,7 @@ export class AiService {
         throw new Error('Unexpected response content type from Claude API');
       }
 
-      return block.text.trim();
+      return this.parseThemedDescription(block.text.trim());
     } catch {
       throw new BadGatewayException('Failed to generate area description');
     }
@@ -83,5 +92,22 @@ export class AiService {
     } catch {
       throw new BadGatewayException('Failed to generate plan narration');
     }
+  }
+
+  private parseThemedDescription(text: string): {
+    description: string;
+    theme: AreaTheme;
+  } {
+    const match = THEME_LINE_PATTERN.exec(text);
+    if (!match) {
+      return { description: text, theme: 'default' };
+    }
+
+    const candidate = match[1].toLowerCase();
+    const theme = (AREA_THEMES as readonly string[]).includes(candidate)
+      ? (candidate as AreaTheme)
+      : 'default';
+
+    return { description: match[2].trim(), theme };
   }
 }

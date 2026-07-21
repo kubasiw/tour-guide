@@ -2,3 +2,31 @@
   width: 2rem;
   height: 2rem;
 }
+
+// Curated per-region accents (AI only picks the label, never the color —
+// see CLAUDE.md's "adaptive per-region theming" note). Scoped to this
+// component only; never touches Bootstrap/global variables.
+.theme-coastal {
+  --theme-color: #1f7a8c;
+}
+
+.theme-mountain-trail {
+  --theme-color: #4a6572;
+}
+
+.theme-urban {
+  --theme-color: #495057;
+}
+
+.theme-countryside {
+  --theme-color: #7c9a45;
+}
+
+.plan-summary__info-card {
+  border-left: 4px solid var(--theme-color, var(--bs-border-color));
+}
+
+.plan-summary__theme-tag {
+  color: var(--theme-color, var(--bs-secondary));
+  font-weight: 600;
+}

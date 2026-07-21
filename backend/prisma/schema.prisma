@@ -41,6 +41,7 @@ model Plan {
   items                    PlanItem[]
   aiDescription            String?
   aiDescriptionGeneratedAt DateTime?
+  themePreset              String?
   createdAt                DateTime   @default(now())
 }
 

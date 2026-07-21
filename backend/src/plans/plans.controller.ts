@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { AreaTheme } from '../ai/area-theme.type';
 import {
   CurrentUser,
   type CurrentUserPayload,
@@ -69,7 +70,7 @@ export class PlansController {
   @Get(':id/ai-description')
   public getAiDescription(
     @Param('id') id: string,
-  ): Promise<{ description: string }> {
+  ): Promise<{ description: string; theme: AreaTheme }> {
     return this.plansService.getAiDescription(id);
   }
 }

@@ -8,6 +8,7 @@ import { of } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { API_BASE_URL } from '../../core/api-base-url';
 import { activityLabel } from '../../core/activity.model';
+import { AREA_THEME_ICONS, AREA_THEME_LABELS } from '../../core/area-theme.model';
 import { areaCenter, estimateReverseZoom } from '../../core/area.model';
 import { GeocodingService } from '../../core/geocoding.service';
 import { POI_TYPE_COLORS, POI_TYPE_ICONS } from '../../core/poi.model';
@@ -32,6 +33,8 @@ export class PlanSummary {
 
   protected readonly poiTypeIcons = POI_TYPE_ICONS;
   protected readonly poiTypeColors = POI_TYPE_COLORS;
+  protected readonly areaThemeIcons = AREA_THEME_ICONS;
+  protected readonly areaThemeLabels = AREA_THEME_LABELS;
 
   protected readonly plan = httpResource<Plan>(() => `${API_BASE_URL}/plans/${this.id()}`);
 
@@ -69,6 +72,12 @@ export class PlanSummary {
     params: () => (this.authService.isAuthenticated() ? this.id() : undefined),
     stream: ({ params: id }) => this.planService.getAiDescription(id),
   });
+
+  protected readonly theme = computed(() => this.aiDescription.value()?.theme ?? 'default');
+
+  protected readonly themeClass = computed(() =>
+    this.authService.isAuthenticated() ? `theme-${this.theme()}` : '',
+  );
 
   protected readonly narration = rxResource({
     params: () => {

@@ -1,10 +1,5 @@
 export type PoiType =
-  | 'trail'
-  | 'monument'
-  | 'restaurant'
-  | 'nightlife'
-  | 'shelter'
-  | 'accommodation';
+  'trail' | 'monument' | 'restaurant' | 'nightlife' | 'shelter' | 'accommodation';
 
 export interface Poi {
   id: string;
@@ -32,4 +27,17 @@ export const POI_TYPE_COLORS: Record<PoiType, string> = {
   nightlife: 'bg-info-subtle',
   shelter: 'bg-secondary-subtle',
   accommodation: 'bg-primary-subtle',
+};
+
+// Real color values for Leaflet markers (can't consume Bootstrap utility
+// classes) — Bootstrap's own stock semantic hex values, matching the
+// bg-*-subtle families above; accommodation uses this app's customized
+// $primary instead of Bootstrap's stock blue.
+export const POI_TYPE_MARKER_COLORS: Record<PoiType, string> = {
+  trail: '#198754',
+  monument: '#ffc107',
+  restaurant: '#dc3545',
+  nightlife: '#0dcaf0',
+  shelter: '#6c757d',
+  accommodation: '#2f6b4f',
 };

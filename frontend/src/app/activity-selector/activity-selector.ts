@@ -24,7 +24,9 @@ export class ActivitySelector {
 
   protected readonly plan = httpResource<Plan>(() => `${API_BASE_URL}/plans/${this.id()}`);
 
-  protected readonly steps = computed(() => buildPlanSteps(this.plan.value(), this.id(), 'activities'));
+  protected readonly steps = computed(() =>
+    buildPlanSteps(this.plan.value(), this.id(), 'activities'),
+  );
 
   protected readonly activities = ACTIVITIES;
   protected readonly selected = signal<ReadonlySet<string>>(new Set());

@@ -13,7 +13,10 @@
     <div class="list-group mb-4" cdkDropList (cdkDropListDropped)="onDrop($event)">
       @for (item of orderedItems(); track item.id) {
         <div class="list-group-item d-flex align-items-center gap-2" cdkDrag>
-          <i class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary" cdkDragHandle></i>
+          <i
+            class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary"
+            cdkDragHandle
+          ></i>
           <span
             class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
             [class]="poiTypeColors[item.poi.type]"
@@ -33,7 +36,29 @@
     </div>
   }
 
-  <h2 class="h5 mb-3">Miejsca</h2>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="h5 mb-0">Miejsca</h2>
+    <div class="btn-group" role="group" aria-label="Widok miejsc">
+      <button
+        type="button"
+        class="btn btn-sm"
+        [class.btn-accent]="viewMode() === 'grid'"
+        [class.btn-outline-secondary]="viewMode() !== 'grid'"
+        (click)="viewMode.set('grid')"
+      >
+        <i class="bi bi-grid"></i>
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm"
+        [class.btn-accent]="viewMode() === 'map'"
+        [class.btn-outline-secondary]="viewMode() !== 'map'"
+        (click)="viewMode.set('map')"
+      >
+        <i class="bi bi-map"></i>
+      </button>
+    </div>
+  </div>
 
   @if (candidates.isLoading()) {
     <app-loader variant="skeleton" [lines]="4" />
@@ -44,7 +69,7 @@
   } @else if (candidates.value(); as pois) {
     @if (pois.length === 0) {
       <p class="text-body-secondary mb-0">Brak pasujących miejsc w tej okolicy.</p>
-    } @else {
+    } @else if (viewMode() === 'grid') {
       <div class="row row-cols-2 row-cols-md-4 g-2">
         @for (poi of pois; track poi.id) {
           <div class="col">
@@ -52,6 +77,8 @@
           </div>
         }
       </div>
+    } @else {
+      <app-poi-map [pois]="pois" [selectedPoiIds]="selectedPoiIds()" (toggled)="toggle($event)" />
     }
   }
 </div>

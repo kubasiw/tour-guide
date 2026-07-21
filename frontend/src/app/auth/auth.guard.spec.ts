@@ -13,9 +13,8 @@ describe('authGuard', () => {
       ],
     });
 
-    return TestBed.runInInjectionContext(() =>
-      authGuard({} as never, {} as never),
-    ) as boolean | UrlTree;
+    return TestBed.runInInjectionContext(() => authGuard({} as never, {} as never)) as
+      boolean | UrlTree;
   }
 
   it('allows access when authenticated', () => {

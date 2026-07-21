@@ -23,10 +23,7 @@ export class Register {
   protected readonly form = this.formBuilder.nonNullable.group({
     email: [
       '',
-      [
-        (c: AbstractControl) => Validators.required(c),
-        (c: AbstractControl) => Validators.email(c),
-      ],
+      [(c: AbstractControl) => Validators.required(c), (c: AbstractControl) => Validators.email(c)],
     ],
     password: ['', [(c: AbstractControl) => Validators.required(c), Validators.minLength(8)]],
   });

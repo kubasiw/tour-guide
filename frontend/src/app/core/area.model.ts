@@ -4,8 +4,7 @@ export interface LatLng {
 }
 
 export type Area =
-  | { kind: 'polygon'; points: LatLng[] }
-  | { kind: 'radius'; center: LatLng; radiusMeters: number };
+  { kind: 'polygon'; points: LatLng[] } | { kind: 'radius'; center: LatLng; radiusMeters: number };
 
 export interface BoundingBox {
   south: number;

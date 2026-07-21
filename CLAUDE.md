@@ -286,14 +286,29 @@ is complete; work now moves to "Beyond MVP" below.
    `GeocodeSearchResult` objects (one with a `boundingBox`, one without), confirming both branches
    move the map correctly — the dropdown rendering/debouncing/formatting itself was independently
    confirmed via real typed input (suggestions appeared, correctly debounced, min-length respected).
-10. **Map view for POIs** — plot points on a map instead of/alongside `poi-picker`'s tile grid,
-    either (a) the plan's already-*selected* `PlanItem`s, or (b) the broader fetched/filtered
-    candidate set (already capped at `MAX_CANDIDATES = 24`, so "limit it somehow" is partly already
-    true) as small dots with popovers. Graduated from the map-preview idea captured under step 3
-    above once a concrete reason emerged. Genuinely undecided which shape this takes — a map-view
-    toggle inside `poi-picker` itself, vs. reusing `area-picker`'s existing Leaflet map later in the
-    flow to also plot points once a plan has selections — decide the concrete shape when starting
-    this step, don't half-build a generic "map component" preemptively.
+10. ✅ **Map view for POIs** — a grid/map toggle (`bi-grid`/`bi-map` button group) inside
+    `poi-picker`, not a separate screen — `poi-picker` already owns candidates/selection state,
+    `area-picker`'s map is a different screen with a different purpose. New dumb `PoiMap` component
+    (`frontend/src/app/plans/poi-map/`, inputs `pois`/`selectedPoiIds`, output `toggled` — no
+    injected services, mirrors why `PoiTile`/`WeatherForecast`/`Stepper` are separately extracted)
+    plots the full candidate set as `L.circleMarker` dots (vector-drawn, so none of
+    `area-picker.ts`'s default-marker-image-path gotcha applies here), colored via a new
+    `POI_TYPE_MARKER_COLORS` hex map (`core/poi.model.ts` — Bootstrap's own stock semantic hex
+    values, since `POI_TYPE_COLORS`' `bg-*-subtle` utility classes aren't usable as real Leaflet
+    fill colors) — already-*selected* POIs get a thicker `$accent`-colored stroke instead of a
+    separate mode, satisfying both framings from the original "undecided" note in one view. Marker
+    popups are built as real `HTMLElement`s (not HTML strings) via `document.createElement`, each
+    with a native `addEventListener('click', ...)` calling `toggled.emit(poi)` — the only correct
+    way to get interactive content into a Leaflet popup; `PoiPicker.toggle()` is reused unchanged
+    as the handler. An `effect()` watching `pois()`/`selectedPoiIds()` clears and rebuilds the whole
+    marker layer on any change, which also naturally closes/refreshes any open popup — no extra
+    popup-lifecycle code needed. Because `PoiMap` is only ever instantiated while the toggle is on
+    "map" (`@if`), its own `afterNextRender()` fires correctly on every (re-)creation, simpler than
+    `area-picker.ts`'s `viewChild()`-signal-timing dance for its conditionally-rendered confirm-card
+    (that one reacts to a child element appearing *within* an already-alive component; here the
+    whole component is freshly created each time). **Accepted limitation, not built:** marker
+    clustering — candidates can render as visually overlapping dots when close together; fine for a
+    first pass at `MAX_CANDIDATES = 24`, revisit if it becomes a real usability problem.
 11. Adaptive per-region theming on the generated plan view, once AI can classify an area's
     character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 

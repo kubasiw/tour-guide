@@ -10,7 +10,7 @@ import { Loader } from './shared/loader/loader';
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, Loader, NgbAlert],
   templateUrl: './app.html',
-  styleUrl: './app.scss'
+  styleUrl: './app.scss',
 })
 export class App {
   protected readonly title = signal('Tourist App');

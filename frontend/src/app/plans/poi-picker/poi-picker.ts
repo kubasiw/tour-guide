@@ -7,11 +7,12 @@ import { POI_TYPE_COLORS, POI_TYPE_ICONS, Poi } from '../../core/poi.model';
 import { Loader } from '../../shared/loader/loader';
 import { PlanItemWithPoi } from '../plan-item.model';
 import { PlanService } from '../plan.service';
+import { PoiMap } from '../poi-map/poi-map';
 import { PoiTile } from '../poi-tile/poi-tile';
 
 @Component({
   selector: 'app-poi-picker',
-  imports: [PoiTile, Loader, NgbAlert, DragDropModule],
+  imports: [PoiTile, Loader, NgbAlert, DragDropModule, PoiMap],
   templateUrl: './poi-picker.html',
   styleUrl: './poi-picker.scss',
 })
@@ -33,6 +34,8 @@ export class PoiPicker {
   protected readonly toggleError = signal<string | null>(null);
 
   protected readonly orderedItems = signal<PlanItemWithPoi[]>([]);
+
+  protected readonly viewMode = signal<'grid' | 'map'>('grid');
 
   protected readonly selectedPoiIds = computed(
     () => new Set((this.items.value() ?? []).map((item) => item.poi.id)),
@@ -81,12 +84,17 @@ export class PoiPicker {
     moveItemInArray(reordered, event.previousIndex, event.currentIndex);
     this.orderedItems.set(reordered);
 
-    this.planService.reorderItems(this.planId(), reordered.map((item) => item.id)).subscribe({
-      next: () => this.items.reload(),
-      error: (err: unknown) => {
-        this.toggleError.set(extractErrorMessage(err));
-        this.orderedItems.set(this.items.value() ?? []);
-      },
-    });
+    this.planService
+      .reorderItems(
+        this.planId(),
+        reordered.map((item) => item.id),
+      )
+      .subscribe({
+        next: () => this.items.reload(),
+        error: (err: unknown) => {
+          this.toggleError.set(extractErrorMessage(err));
+          this.orderedItems.set(this.items.value() ?? []);
+        },
+      });
   }
 }

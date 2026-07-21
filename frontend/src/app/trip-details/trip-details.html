@@ -35,7 +35,9 @@
           formControlName="durationDays"
           min="1"
           max="30"
-          [class.is-invalid]="form.controls.durationDays.invalid && form.controls.durationDays.touched"
+          [class.is-invalid]="
+            form.controls.durationDays.invalid && form.controls.durationDays.touched
+          "
         />
         <div class="invalid-feedback">Podaj liczbę dni od 1 do 30.</div>
       </div>

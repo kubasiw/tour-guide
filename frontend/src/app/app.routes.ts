@@ -9,6 +9,7 @@ import { Register } from './auth/register/register';
 import { ResetPassword } from './auth/reset-password/reset-password';
 import { MyPlans } from './my-plans/my-plans';
 import { PlanDetail } from './plans/plan-detail/plan-detail';
+import { PlanSummary } from './plans/plan-summary/plan-summary';
 import { TripDetails } from './trip-details/trip-details';
 
 export const routes: Routes = [
@@ -22,5 +23,6 @@ export const routes: Routes = [
   { path: 'plans/:id/area', component: AreaPicker },
   { path: 'plans/:id/activities', component: ActivitySelector },
   { path: 'plans/:id/trip-details', component: TripDetails },
+  { path: 'plans/:id/summary', component: PlanSummary },
   { path: 'plans/:id', component: PlanDetail },
 ];

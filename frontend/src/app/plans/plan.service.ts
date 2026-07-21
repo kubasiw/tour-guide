@@ -33,6 +33,10 @@ export class PlanService {
     return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}/area`, area);
   }
 
+  public finalize(id: string): Observable<Plan> {
+    return this.http.patch<Plan>(`${API_BASE_URL}/plans/${id}/finalize`, {});
+  }
+
   public getAiDescription(id: string): Observable<{ description: string }> {
     return this.http.get<{ description: string }>(`${API_BASE_URL}/plans/${id}/ai-description`);
   }

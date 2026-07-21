@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { GeocodingService } from '../geocoding/geocoding.service';
@@ -103,6 +107,27 @@ export class PlansService {
           },
         },
       },
+      include: { area: true },
+    });
+
+    return this.toPlanWithArea(plan);
+  }
+
+  public async finalize(id: string): Promise<PlanWithArea> {
+    await this.findOne(id);
+
+    const itemCount = await this.prisma.planItem.count({
+      where: { planId: id },
+    });
+    if (itemCount === 0) {
+      throw new BadRequestException(
+        'Plan needs at least one item before it can be finalized',
+      );
+    }
+
+    const plan = await this.prisma.plan.update({
+      where: { id },
+      data: { status: 'final' },
       include: { area: true },
     });
 

@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, input, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+import { Router, RouterLink } from '@angular/router';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../auth/auth.service';
 import { extractErrorMessage } from '../../core/http-error';
@@ -8,20 +9,24 @@ import { POI_TYPE_COLORS, POI_TYPE_ICONS, Poi } from '../../core/poi.model';
 import { Loader } from '../../shared/loader/loader';
 import { PlanItemWithPoi } from '../plan-item.model';
 import { PlanService } from '../plan.service';
+import { PLAN_STATUS_FINAL } from '../plan-status';
 import { PoiMap } from '../poi-map/poi-map';
 import { PoiTile } from '../poi-tile/poi-tile';
 
 @Component({
   selector: 'app-poi-picker',
-  imports: [PoiTile, Loader, NgbAlert, DragDropModule, PoiMap],
+  imports: [PoiTile, Loader, NgbAlert, DragDropModule, PoiMap, RouterLink],
   templateUrl: './poi-picker.html',
   styleUrl: './poi-picker.scss',
 })
 export class PoiPicker {
   public readonly planId = input.required<string>();
+  public readonly planStatus = input<string>();
 
   private readonly planService = inject(PlanService);
+  private readonly router = inject(Router);
   protected readonly authService = inject(AuthService);
+  protected readonly planStatusFinal = PLAN_STATUS_FINAL;
 
   protected readonly candidates = rxResource({
     params: () => this.planId(),
@@ -44,6 +49,9 @@ export class PoiPicker {
   protected readonly narration = signal<string | null>(null);
   protected readonly narrationLoading = signal(false);
   protected readonly narrationError = signal<string | null>(null);
+
+  protected readonly finalizing = signal(false);
+  protected readonly finalizeError = signal<string | null>(null);
 
   protected readonly selectedPoiIds = computed(
     () => new Set((this.items.value() ?? []).map((item) => item.poi.id)),
@@ -97,6 +105,22 @@ export class PoiPicker {
       error: (err: unknown) => {
         this.narrationLoading.set(false);
         this.narrationError.set(extractErrorMessage(err));
+      },
+    });
+  }
+
+  protected finalize(): void {
+    this.finalizing.set(true);
+    this.finalizeError.set(null);
+
+    this.planService.finalize(this.planId()).subscribe({
+      next: () => {
+        this.finalizing.set(false);
+        void this.router.navigate(['/plans', this.planId(), 'summary']);
+      },
+      error: (err: unknown) => {
+        this.finalizing.set(false);
+        this.finalizeError.set(extractErrorMessage(err));
       },
     });
   }

@@ -2,6 +2,7 @@ import { Component, computed, inject, input } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { rxResource } from '@angular/core/rxjs-interop';
+import { RouterLink } from '@angular/router';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { of } from 'rxjs';
 import { API_BASE_URL } from '../../core/api-base-url';
@@ -13,11 +14,12 @@ import { Loader } from '../../shared/loader/loader';
 import { WeatherForecast } from '../../weather/weather-forecast/weather-forecast';
 import { Plan } from '../plan.model';
 import { PlanService } from '../plan.service';
+import { PLAN_STATUS_FINAL } from '../plan-status';
 import { PoiPicker } from '../poi-picker/poi-picker';
 
 @Component({
   selector: 'app-plan-detail',
-  imports: [Loader, WeatherForecast, DatePipe, PoiPicker, NgbAlert],
+  imports: [Loader, WeatherForecast, DatePipe, PoiPicker, NgbAlert, RouterLink],
   templateUrl: './plan-detail.html',
 })
 export class PlanDetail {
@@ -26,6 +28,7 @@ export class PlanDetail {
   private readonly geocodingService = inject(GeocodingService);
   private readonly planService = inject(PlanService);
   protected readonly authService = inject(AuthService);
+  protected readonly planStatusFinal = PLAN_STATUS_FINAL;
 
   protected readonly plan = httpResource<Plan>(() => `${API_BASE_URL}/plans/${this.id()}`);
 

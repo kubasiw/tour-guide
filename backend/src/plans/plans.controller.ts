@@ -60,6 +60,11 @@ export class PlansController {
     return this.plansService.updateArea(id, dto);
   }
 
+  @Patch(':id/finalize')
+  public finalize(@Param('id') id: string): Promise<PlanWithArea> {
+    return this.plansService.finalize(id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id/ai-description')
   public getAiDescription(

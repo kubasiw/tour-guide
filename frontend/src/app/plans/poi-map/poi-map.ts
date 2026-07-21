@@ -28,6 +28,7 @@ export class PoiMap {
   public readonly pois = input.required<Poi[]>();
   public readonly selectedPoiIds = input.required<Set<string>>();
   public readonly hoveredPoiId = input<string | null>(null);
+  public readonly readonly = input(false);
   public readonly toggled = output<Poi>();
   public readonly poiHovered = output<string | null>();
 
@@ -149,13 +150,15 @@ export class PoiMap {
       container.appendChild(hours);
     }
 
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `btn btn-sm mt-2 ${selected ? 'btn-outline-secondary' : 'btn-accent'}`;
-    button.textContent = selected ? 'Usuń z planu' : 'Dodaj do planu';
-    button.addEventListener('click', () => this.toggled.emit(poi));
-    container.appendChild(document.createElement('br'));
-    container.appendChild(button);
+    if (!this.readonly()) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `btn btn-sm mt-2 ${selected ? 'btn-outline-secondary' : 'btn-accent'}`;
+      button.textContent = selected ? 'Usuń z planu' : 'Dodaj do planu';
+      button.addEventListener('click', () => this.toggled.emit(poi));
+      container.appendChild(document.createElement('br'));
+      container.appendChild(button);
+    }
 
     return container;
   }

@@ -1,0 +1,114 @@
+<div class="container py-4">
+  @if (plan.isLoading()) {
+    <app-loader variant="spinner" />
+  } @else if (plan.error()) {
+    <p><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Plan not found.</p>
+  } @else if (plan.value(); as value) {
+    <h1 class="h3 mb-3"><i class="bi bi-check2-circle text-success me-2"></i>Podsumowanie planu</h1>
+
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-6">
+        <div class="card h-100">
+          <div class="card-body">
+            @if (placeName.isLoading()) {
+              <app-loader variant="spinner" />
+            } @else if (placeName.value(); as place) {
+              <p class="card-text mb-0">
+                <i class="bi bi-geo-alt-fill me-2"></i>{{ place.displayName }}
+              </p>
+            }
+
+            @if (authService.isAuthenticated()) {
+              @if (aiDescription.isLoading()) {
+                <app-loader variant="skeleton" [lines]="3" />
+              } @else if (aiDescription.error()) {
+                <ngb-alert type="danger" class="small py-2 mt-2" [dismissible]="false">
+                  Nie udało się wygenerować opisu AI.
+                </ngb-alert>
+              } @else if (aiDescription.value(); as desc) {
+                <p class="mt-2 mb-0 fst-italic">{{ desc.description }}</p>
+              }
+            }
+
+            @if (value.activities.length > 0) {
+              <div class="mt-3">
+                <h2 class="h6">Aktywności</h2>
+                <div class="d-flex flex-wrap gap-2">
+                  @for (key of value.activities; track key) {
+                    <span class="badge bg-secondary">{{ label(key) }}</span>
+                  }
+                </div>
+              </div>
+            }
+
+            @if (value.startDate) {
+              <p class="mt-3 mb-0">
+                <i class="bi bi-calendar-event me-2"></i>{{ value.startDate | date }} ·
+                {{ value.durationDays }} dni
+              </p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-lg-6">
+        @if (center(); as point) {
+          <app-weather-forecast
+            [lat]="point.lat"
+            [lng]="point.lng"
+            [startDate]="value.startDate ? value.startDate.slice(0, 10) : null"
+            [durationDays]="value.durationDays"
+          />
+        }
+      </div>
+    </div>
+
+    @if (authService.isAuthenticated()) {
+      @if (narration.isLoading()) {
+        <app-loader variant="skeleton" [lines]="3" />
+      } @else if (narration.error()) {
+        <ngb-alert type="danger" class="small py-2" [dismissible]="false">
+          Nie udało się wygenerować podsumowania AI.
+        </ngb-alert>
+      } @else if (narration.value(); as result) {
+        <p class="fst-italic mb-4">{{ result.narration }}</p>
+      }
+    }
+
+    @if (items.isLoading()) {
+      <app-loader variant="skeleton" [lines]="4" />
+    } @else if (items.value(); as loadedItems) {
+      @if (loadedItems.length === 0) {
+        <ngb-alert type="secondary" [dismissible]="false">
+          Nie wybrałeś jeszcze żadnych miejsc.
+          <a [routerLink]="['/plans', id()]">Wróć do edycji planu</a>, aby coś dodać.
+        </ngb-alert>
+      } @else {
+        <div class="row g-3">
+          <div class="col-12 col-lg-6">
+            <div class="list-group mb-4">
+              @for (item of loadedItems; track item.id) {
+                <div class="list-group-item d-flex align-items-center gap-2">
+                  <span
+                    class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                    [class]="poiTypeColors[item.poi.type]"
+                  >
+                    <i class="bi {{ poiTypeIcons[item.poi.type] }}"></i>
+                  </span>
+                  <span class="flex-grow-1 text-truncate">{{ item.poi.name }}</span>
+                </div>
+              }
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <app-poi-map [pois]="pois()" [selectedPoiIds]="selectedPoiIds()" [readonly]="true" />
+          </div>
+        </div>
+
+        <a [routerLink]="['/plans', id()]" class="btn btn-outline-secondary">
+          <i class="bi bi-pencil me-1"></i>Edytuj plan
+        </a>
+      }
+    }
+  }
+</div>

@@ -382,14 +382,44 @@ is complete; work now moves to "Beyond MVP" below.
     mobile** — hover doesn't exist on touch and a side-by-side split is cramped narrow, but below
     `lg` it just stacks (grid above, map below) via the same responsive columns, which is still a
     perfectly usable view; no extra code to detect/hide it on small screens.
-11. **Finalized-plan summary view** (captured 2026-07-21, not built yet) — what happens once the
-    user is done editing and considers the plan final: a dedicated read-only summary screen (nice
-    AI-written descriptions, a map of the selected `PlanItem`s, distinct from today's editable
-    `poi-picker` working view). Sequenced right after AI narration (step 8) since narration's
-    output needs a home, and this is it — deliberately scoped as its own step rather than folded
-    into narration itself (agreed via `AskUserQuestion`: keep each step independently verifiable).
-    No design decisions made yet (what marks a plan "final," whether it's a new `Plan.status`
-    value, what exactly the summary shows) — design this properly when starting.
+11. ✅ **Finalized-plan summary view (2026-07-21)** — a real approval action plus a dedicated
+    read-only summary screen. `Plan.status` (existed since Faza 1, always `"draft"`, never read or
+    written until now) gets a genuine `'final'` transition: `PlansService.finalize(id)` requires
+    at least one `PlanItem` (`BadRequestException` otherwise, same style as
+    `PlanGeneratorService`'s zero-item guards), sets `status: 'final'`, `PATCH /plans/:id/finalize`
+    (no guard, same as `update`/`updateArea` — "auth is not a hard gate"). **Deliberately not
+    doing:** an "un-finalize" action or blocking further edits on an already-finalized plan — same
+    no-invariant-enforcement precedent as `Area` edits not resetting `aiDescription`; `/plans/:id`
+    stays fully editable regardless of status, and finalizing again is idempotent.
+    Frontend: new `plans/plan-summary/` (smart component, mirrors `plan-detail.ts`'s
+    `httpResource`/`rxResource` shapes for `plan`/`items`/`placeName`/`aiDescription` almost
+    verbatim — the place-name/`areaCenter`/`estimateReverseZoom` resource logic is now duplicated
+    across the two files; accepted for a 2nd occurrence, same "extract only at a 3rd/4th call site"
+    judgment call made for the password-match validator earlier this session, revisit if a third
+    screen needs it). **New pattern, deliberately different from `poi-picker`'s narration
+    button:** `plan-summary`'s narration is an `rxResource` that auto-fires once when the page has
+    both an authenticated user and ≥1 item — confirmed via `AskUserQuestion` — since a summary
+    visit is inherently the low-frequency "I'm done" moment (unlike `poi-picker`'s heavy-iteration
+    editing, where a manual button controls cost); `poi-picker`'s own manual
+    "Wygeneruj podsumowanie AI" button is untouched. `plans/poi-map/poi-map.ts` gained a
+    `readonly = input(false)` — when true, `buildPopupContent` skips the "Dodaj/Usuń z planu"
+    button entirely (name + opening hours still show), letting `PoiMap` serve both the editable
+    `poi-picker` map and the new read-only summary map without a second component. Entry points:
+    a "Zakończ planowanie" button in `poi-picker` (disabled with zero items; calls `finalize()`
+    then navigates to `/plans/:id/summary`) that swaps to "Zobacz podsumowanie" once
+    `planStatus() === PLAN_STATUS_FINAL` (new tiny `plans/plan-status.ts` constant, avoids a
+    duplicated `'final'` string literal across `poi-picker`/`plan-detail`); `plan-detail.html` also
+    shows a persistent "✓ Plan zakończony · Zobacz podsumowanie" link once finalized, so a
+    returning user doesn't have to scroll back into `poi-picker` to reach it again.
+    `{ path: 'plans/:id/summary' }` has no guard, same as `plans/:id` — plan-viewing has never
+    required login. Zero-item plans show a friendly empty state with a link back to the editable
+    view instead of an empty map.
+    Verified: backend curl (finalize with 0 items → 400; add an item, finalize → 200 persisted
+    `status: "final"`; finalize again → still 200, idempotent) + full browser walkthrough (fresh
+    finalize from `poi-picker` → navigates to summary → narration auto-appears with no click →
+    map popup has no interactive button → "Edytuj plan" returns to the working view →
+    `plan-detail`'s persistent link works on a revisit → zero-item empty state → both mobile and
+    desktop width, no horizontal overflow).
 12. Adaptive per-region theming on the generated plan view (i.e. the finalized-plan summary view
     above, once it exists), once AI can classify an area's character — see the "Design direction"
     bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".

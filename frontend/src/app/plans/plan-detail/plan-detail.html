@@ -6,6 +6,14 @@
   } @else if (plan.value(); as value) {
     <h1 class="h3 mb-3">Plan ({{ value.status }})</h1>
 
+    @if (value.status === planStatusFinal) {
+      <p class="mb-3">
+        <a [routerLink]="['/plans', id(), 'summary']">
+          <i class="bi bi-check2-circle text-success me-1"></i>Plan zakończony · Zobacz podsumowanie
+        </a>
+      </p>
+    }
+
     <div class="row g-3">
       <div class="col-12 col-lg-6">
         <div class="card h-100">
@@ -63,6 +71,6 @@
       </div>
     </div>
 
-    <app-poi-picker [planId]="id()" />
+    <app-poi-picker [planId]="id()" [planStatus]="value.status" />
   }
 </div>

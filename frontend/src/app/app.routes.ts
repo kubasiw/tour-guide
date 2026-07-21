@@ -2,8 +2,10 @@ import { Routes } from '@angular/router';
 import { ActivitySelector } from './activity-selector/activity-selector';
 import { AreaPicker } from './area-picker/area-picker';
 import { authGuard } from './auth/auth.guard';
+import { ForgotPassword } from './auth/forgot-password/forgot-password';
 import { Login } from './auth/login/login';
 import { Register } from './auth/register/register';
+import { ResetPassword } from './auth/reset-password/reset-password';
 import { MyPlans } from './my-plans/my-plans';
 import { PlanDetail } from './plans/plan-detail/plan-detail';
 import { TripDetails } from './trip-details/trip-details';
@@ -12,6 +14,8 @@ export const routes: Routes = [
   { path: '', component: AreaPicker },
   { path: 'login', component: Login },
   { path: 'register', component: Register },
+  { path: 'forgot-password', component: ForgotPassword },
+  { path: 'reset-password', component: ResetPassword },
   { path: 'my-plans', component: MyPlans, canActivate: [authGuard] },
   { path: 'plans/:id/area', component: AreaPicker },
   { path: 'plans/:id/activities', component: ActivitySelector },

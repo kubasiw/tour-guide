@@ -398,16 +398,31 @@ is complete; work now moves to "Beyond MVP" below.
     account from the dev DB to register again). Today's `auth/` (Faza 1 step 2) is deliberately
     simple email+password+JWT with none of this. Three pieces, not all the same size: (a) a
     password-confirmation field on `register` (retype password, client-side match validation) —
-    trivial, no backend changes. (b) A real "forgot password" flow — needs a reset-token model (new
-    Prisma table, expiring tokens) and *some* way to deliver the reset link, which is a genuinely
-    open question: this app has stuck to free/no-key APIs throughout and has no email-sending
-    integration yet. Likely start with logging the reset link to the backend console in dev rather
-    than wiring a real email provider, and revisit if this ever needs to work for real,
-    non-developer users. (c) A "change password" endpoint for already-logged-in users — also needs
-    a home, since there's no account/settings screen anywhere in the app yet either. Bigger than a
-    single step in practice — decide phasing when starting (most likely (a) first since it's
-    trivial and self-contained, (b)/(c) as a real follow-up once the email-delivery question is
-    answered).
+    trivial, no backend changes, not built yet. (b) ✅ **Forgot password (2026-07-21)** — real
+    reset-token flow. New `PasswordResetToken` model (`userId`, `user` relation with
+    `onDelete: Cascade` — tokens are ephemeral/dependent data, unlike `Plan`'s deliberately
+    non-cascading `User` relation; direct lesson from the FK-constraint block hit deleting a user
+    manually earlier this session — see the note on `AuthService` below), `tokenHash String
+    @unique`, `expiresAt`. `AuthService.forgotPassword(email)` / `resetPassword(token,
+    newPassword)` (`POST /auth/forgot-password` / `POST /auth/reset-password`, both unguarded, same
+    as `register`/`login`) — three deliberate, cheap-to-do-right security choices: the raw token is
+    SHA-256-hashed (Node's built-in `crypto`, no new dependency) before storing, so a DB dump alone
+    can't be used to reset accounts; the API always returns the same generic message regardless of
+    whether the email is registered, to prevent account enumeration; requesting a new token or
+    completing a reset both delete any other outstanding tokens for that user.
+    **Delivery mechanism: `console.log`s the full reset link** (`http://localhost:4200/reset-password
+    ?token=<raw>`) rather than a real email provider — same no-cost/no-new-integration precedent as
+    every other external API in this app; revisit only if this ever needs to work for real,
+    non-developer users. Frontend: new `auth/forgot-password/` (email-only form) and
+    `auth/reset-password/` (`token = input<string>()`, bound straight from the `?token=` query
+    param via the already-enabled `withComponentInputBinding()` — confirmed this binds query params
+    too, not just route params, same mechanism `AreaPicker.id` relies on for route params; new
+    `newPassword`/`confirmPassword` fields with a `FormGroup`-level cross-field
+    `passwordsMatchValidator`), both mirroring `login`/`register`'s exact
+    `FormBuilder`/`submitting`/`errorMessage`/`extractErrorMessage`/`<app-loader variant="spinner">`
+    pattern; a "Zapomniałeś hasła?" link added to `login`. (c) A "change password" endpoint for
+    already-logged-in users — still not built, also needs a home since there's no account/settings
+    screen anywhere in the app yet either.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

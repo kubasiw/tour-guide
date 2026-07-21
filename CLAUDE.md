@@ -695,3 +695,13 @@ Frontend-specific:
   don't remove either half of that fix. Leaflet is imperative (not signal/template-driven), so it's
   initialized in `afterNextRender` against a template-referenced `div` — this is the accepted
   pattern for wrapping imperative DOM libraries in Angular, not a convention violation.
+  **Gotcha (2026-07-21):** Leaflet's default `scrollWheelZoom: true` hijacks trackpad/mouse-wheel
+  scrolling anywhere over the map, zooming it instead of letting the page scroll past — a real
+  usability complaint, not just a testing-environment artifact (same "scroll-jacking" class of
+  problem as embedded Google Maps without click-to-activate). Fixed in both `area-picker.ts` and
+  `plans/poi-map/poi-map.ts` identically: create the map with `scrollWheelZoom: false`, then
+  `map.on('click', () => map.scrollWheelZoom.enable())` /
+  `map.on('mouseout', () => map.scrollWheelZoom.disable())` — scroll-to-zoom only activates once
+  the user has deliberately clicked into the map, and turns back off once the cursor leaves it, so
+  the page underneath always scrolls normally otherwise. Apply the same fix to any future
+  `L.map(...)` call in this app.

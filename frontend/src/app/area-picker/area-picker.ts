@@ -167,11 +167,20 @@ export class AreaPicker {
   }
 
   private initMap(): void {
-    const map = L.map(this.mapContainer().nativeElement).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+    const map = L.map(this.mapContainer().nativeElement, { scrollWheelZoom: false }).setView(
+      DEFAULT_CENTER,
+      DEFAULT_ZOOM,
+    );
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
+
+    // Trackpad/mouse-wheel scrolling over the map shouldn't hijack the page's
+    // own scroll — only zoom once the user has deliberately clicked into the
+    // map, same pattern as embedded Google Maps.
+    map.on('click', () => map.scrollWheelZoom.enable());
+    map.on('mouseout', () => map.scrollWheelZoom.disable());
 
     const drawnItems = new L.FeatureGroup().addTo(map);
 

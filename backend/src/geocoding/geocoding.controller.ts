@@ -11,7 +11,7 @@ export class GeocodingController {
   @Get('search')
   public search(
     @Query() query: GeocodeSearchQueryDto,
-  ): Promise<GeocodeSearchResult | null> {
+  ): Promise<GeocodeSearchResult[]> {
     return this.geocodingService.search(query.q);
   }
 
@@ -19,6 +19,6 @@ export class GeocodingController {
   public reverse(
     @Query() query: GeocodeReverseQueryDto,
   ): Promise<GeocodeReverseResult> {
-    return this.geocodingService.reverse(query.lat, query.lng);
+    return this.geocodingService.reverse(query.lat, query.lng, query.zoom);
   }
 }

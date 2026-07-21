@@ -19,15 +19,15 @@ export interface GeocodeReverseResult {
 export class GeocodingService {
   private readonly http = inject(HttpClient);
 
-  public search(query: string): Observable<GeocodeSearchResult | null> {
-    return this.http.get<GeocodeSearchResult | null>(`${API_BASE_URL}/geocode/search`, {
+  public search(query: string): Observable<GeocodeSearchResult[]> {
+    return this.http.get<GeocodeSearchResult[]>(`${API_BASE_URL}/geocode/search`, {
       params: { q: query },
     });
   }
 
-  public reverse(lat: number, lng: number): Observable<GeocodeReverseResult> {
+  public reverse(lat: number, lng: number, zoom?: number): Observable<GeocodeReverseResult> {
     return this.http.get<GeocodeReverseResult>(`${API_BASE_URL}/geocode/reverse`, {
-      params: { lat, lng },
+      params: zoom === undefined ? { lat, lng } : { lat, lng, zoom },
     });
   }
 }

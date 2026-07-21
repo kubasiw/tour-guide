@@ -6,7 +6,7 @@ import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { of } from 'rxjs';
 import { API_BASE_URL } from '../../core/api-base-url';
 import { activityLabel } from '../../core/activity.model';
-import { areaCenter } from '../../core/area.model';
+import { areaCenter, estimateReverseZoom } from '../../core/area.model';
 import { GeocodingService } from '../../core/geocoding.service';
 import { AuthService } from '../../auth/auth.service';
 import { Loader } from '../../shared/loader/loader';
@@ -34,10 +34,18 @@ export class PlanDetail {
     return plan ? areaCenter(plan.area) : null;
   });
 
+  protected readonly reverseZoom = computed(() => {
+    const plan = this.plan.value();
+    return plan ? estimateReverseZoom(plan.area) : undefined;
+  });
+
   protected readonly placeName = rxResource({
-    params: () => this.center(),
+    params: () => {
+      const point = this.center();
+      return point ? { ...point, zoom: this.reverseZoom() } : null;
+    },
     stream: ({ params }) =>
-      params ? this.geocodingService.reverse(params.lat, params.lng) : of(null),
+      params ? this.geocodingService.reverse(params.lat, params.lng, params.zoom) : of(null),
   });
 
   protected readonly aiDescription = rxResource({

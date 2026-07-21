@@ -5,6 +5,7 @@ const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 // Nominatim's usage policy requires a User-Agent identifying the app — Node's
 // fetch doesn't send one by default (unlike curl), same gotcha as Overpass.
 const USER_AGENT = 'tour-guide-app/0.1 (dev)';
+const SEARCH_RESULT_LIMIT = 5;
 
 interface NominatimSearchItem {
   display_name: string;
@@ -30,19 +31,15 @@ interface NominatimReverseResponse {
 
 @Injectable()
 export class GeocodingService {
-  public async search(query: string): Promise<GeocodeSearchResult | null> {
+  public async search(query: string): Promise<GeocodeSearchResult[]> {
     const url = new URL(`${NOMINATIM_URL}/search`);
     url.searchParams.set('q', query);
     url.searchParams.set('format', 'json');
-    url.searchParams.set('limit', '1');
+    url.searchParams.set('limit', String(SEARCH_RESULT_LIMIT));
 
     const results = await this.fetchJson<NominatimSearchItem[]>(url);
-    const result = results[0];
-    if (!result) {
-      return null;
-    }
 
-    return {
+    return results.map((result) => ({
       displayName: result.display_name,
       lat: Number(result.lat),
       lng: Number(result.lon),
@@ -54,18 +51,20 @@ export class GeocodingService {
             east: Number(result.boundingbox[3]),
           }
         : null,
-    };
+    }));
   }
 
   public async reverse(
     lat: number,
     lng: number,
+    zoom = 18,
   ): Promise<GeocodeReverseResult> {
     const url = new URL(`${NOMINATIM_URL}/reverse`);
     url.searchParams.set('lat', String(lat));
     url.searchParams.set('lon', String(lng));
     url.searchParams.set('format', 'json');
     url.searchParams.set('addressdetails', '1');
+    url.searchParams.set('zoom', String(zoom));
 
     const body = await this.fetchJson<NominatimReverseResponse>(url);
     return { displayName: this.buildShortName(body) };

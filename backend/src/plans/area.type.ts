@@ -55,3 +55,35 @@ export function areaBoundingBox(area: Area): BoundingBox {
     east: area.center.lng + lngDelta,
   };
 }
+
+// Nominatim's reverse-geocoding `zoom` (0-18) controls how precise the returned
+// place is (18 = building, 10 = city, 3 = country) — picked from the drawn
+// area's real size so a big circle resolves to a city name, not the specific
+// street its center happens to land on. Thresholds are deliberate, tunable
+// choices, not rigorously derived.
+export function estimateReverseZoom(area: Area): number {
+  const bbox = areaBoundingBox(area);
+  const centerLatRad = ((bbox.north + bbox.south) / 2 / 180) * Math.PI;
+
+  const latMeters = (bbox.north - bbox.south) * METERS_PER_DEGREE_LAT;
+  const lngMeters =
+    (bbox.east - bbox.west) * METERS_PER_DEGREE_LAT * Math.cos(centerLatRad);
+  const diagonalMeters = Math.sqrt(latMeters ** 2 + lngMeters ** 2);
+
+  if (diagonalMeters <= 1000) {
+    return 17;
+  }
+  if (diagonalMeters <= 3000) {
+    return 15;
+  }
+  if (diagonalMeters <= 8000) {
+    return 13;
+  }
+  if (diagonalMeters <= 20000) {
+    return 11;
+  }
+  if (diagonalMeters <= 60000) {
+    return 9;
+  }
+  return 7;
+}

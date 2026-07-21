@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { DecimalPipe, DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
@@ -8,6 +8,14 @@ import { weatherCodeToIcon } from '../weather-code';
 import { Forecast } from '../weather.model';
 
 export const HISTORICAL_ESTIMATE_YEARS = 5;
+const FALLBACK_DAY_COUNT = 5;
+const MAX_SKELETON_DAYS = 9;
+
+function addDaysToDateString(date: string, days: number): string {
+  const parsed = new Date(`${date}T00:00:00Z`);
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
+}
 
 @Component({
   selector: 'app-weather-forecast',
@@ -22,6 +30,17 @@ export class WeatherForecast {
   public readonly durationDays = input<number | null>();
 
   protected readonly historicalEstimateYears = HISTORICAL_ESTIMATE_YEARS;
+
+  protected readonly skeletonDays = computed(() => {
+    const count = Math.min((this.durationDays() ?? FALLBACK_DAY_COUNT) + 4, MAX_SKELETON_DAYS);
+    return Array.from({ length: count }, (_, index) => index);
+  });
+
+  protected readonly tripEndDate = computed(() => {
+    const startDate = this.startDate();
+    const durationDays = this.durationDays();
+    return startDate && durationDays ? addDaysToDateString(startDate, durationDays - 1) : null;
+  });
 
   protected readonly forecast = httpResource<Forecast>(() => {
     const params = new URLSearchParams({
@@ -40,4 +59,13 @@ export class WeatherForecast {
   });
 
   protected readonly weatherCodeToIcon = weatherCodeToIcon;
+
+  protected isInTrip(date: string): boolean {
+    const startDate = this.startDate();
+    const endDate = this.tripEndDate();
+    if (!startDate || !endDate) {
+      return true;
+    }
+    return date >= startDate && date <= endDate;
+  }
 }

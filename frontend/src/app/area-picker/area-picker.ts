@@ -11,13 +11,15 @@ import {
   viewChild,
 } from '@angular/core';
 import { httpResource } from '@angular/common/http';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
+import { NgbAlert, NgbTypeahead, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
 import * as L from 'leaflet';
 import 'leaflet-draw';
+import { Observable, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
 import { API_BASE_URL } from '../core/api-base-url';
 import { Area } from '../core/area.model';
-import { GeocodingService } from '../core/geocoding.service';
+import { GeocodeSearchResult, GeocodingService } from '../core/geocoding.service';
 import { extractErrorMessage } from '../core/http-error';
 import { buildPlanSteps } from '../plans/plan-steps';
 import { Plan } from '../plans/plan.model';
@@ -25,6 +27,9 @@ import { PlanService } from '../plans/plan.service';
 import { AreaSummary } from '../shared/area-summary/area-summary';
 import { Loader } from '../shared/loader/loader';
 import { Stepper } from '../shared/stepper/stepper';
+
+const SEARCH_MIN_LENGTH = 3;
+const SEARCH_DEBOUNCE_MS = 300;
 
 const DEFAULT_CENTER: L.LatLngExpression = [50.06, 19.94];
 const DEFAULT_ZOOM = 13;
@@ -39,7 +44,7 @@ L.Icon.Default.mergeOptions({
 
 @Component({
   selector: 'app-area-picker',
-  imports: [AreaSummary, Loader, NgbAlert, Stepper],
+  imports: [AreaSummary, Loader, NgbAlert, Stepper, ReactiveFormsModule, NgbTypeahead],
   templateUrl: './area-picker.html',
   styleUrl: './area-picker.scss',
 })
@@ -65,8 +70,8 @@ export class AreaPicker {
   protected readonly area = signal<Area | null>(null);
   protected readonly confirming = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
-  protected readonly searching = signal(false);
-  protected readonly searchError = signal<string | null>(null);
+
+  protected readonly searchControl = new FormControl('', { nonNullable: true });
 
   private readonly mapSignal = signal<L.Map | undefined>(undefined);
   private drawnItems?: L.FeatureGroup;
@@ -107,44 +112,35 @@ export class AreaPicker {
     this.drawnItems?.clearLayers();
   }
 
-  protected onSearchSubmit(event: SubmitEvent, query: string): void {
-    event.preventDefault();
-    this.search(query);
-  }
+  protected readonly searchTypeahead = (
+    text$: Observable<string>,
+  ): Observable<readonly GeocodeSearchResult[]> =>
+    text$.pipe(
+      debounceTime(SEARCH_DEBOUNCE_MS),
+      distinctUntilChanged(),
+      switchMap((term) =>
+        term.trim().length < SEARCH_MIN_LENGTH
+          ? of([])
+          : this.geocodingService.search(term.trim()).pipe(catchError(() => of([]))),
+      ),
+    );
 
-  protected search(query: string): void {
-    const trimmed = query.trim();
-    if (!trimmed) {
-      return;
+  protected readonly resultFormatter = (result: GeocodeSearchResult): string => result.displayName;
+  protected readonly inputFormatter = (result: GeocodeSearchResult): string => result.displayName;
+
+  protected onSelectItem(event: NgbTypeaheadSelectItemEvent<GeocodeSearchResult>): void {
+    const result = event.item;
+    const map = this.mapSignal();
+
+    if (result.boundingBox) {
+      const { south, west, north, east } = result.boundingBox;
+      map?.fitBounds([
+        [south, west],
+        [north, east],
+      ]);
+    } else {
+      map?.flyTo([result.lat, result.lng], DEFAULT_ZOOM);
     }
-
-    this.searching.set(true);
-    this.searchError.set(null);
-
-    this.geocodingService.search(trimmed).subscribe({
-      next: (result) => {
-        this.searching.set(false);
-        if (!result) {
-          this.searchError.set('Nie znaleziono takiego miejsca.');
-          return;
-        }
-
-        const map = this.mapSignal();
-        if (result.boundingBox) {
-          const { south, west, north, east } = result.boundingBox;
-          map?.fitBounds([
-            [south, west],
-            [north, east],
-          ]);
-        } else {
-          map?.flyTo([result.lat, result.lng], DEFAULT_ZOOM);
-        }
-      },
-      error: (err: unknown) => {
-        this.searching.set(false);
-        this.searchError.set(extractErrorMessage(err));
-      },
-    });
   }
 
   protected confirm(): void {

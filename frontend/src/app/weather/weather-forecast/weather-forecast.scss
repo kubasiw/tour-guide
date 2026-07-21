@@ -1,5 +1,15 @@
+@use 'variables' as v;
+
 .weather-forecast__day {
   width: 5.5rem;
+}
+
+.weather-forecast__day--context {
+  opacity: 0.55;
+}
+
+.weather-forecast__day--highlighted {
+  border: 2px solid v.$accent;
 }
 
 .weather-forecast__date,

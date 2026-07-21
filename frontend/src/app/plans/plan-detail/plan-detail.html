@@ -20,7 +20,7 @@
 
             @if (authService.isAuthenticated()) {
               @if (aiDescription.isLoading()) {
-                <app-loader variant="spinner" />
+                <app-loader variant="skeleton" [lines]="3" />
               } @else if (aiDescription.error()) {
                 <ngb-alert type="danger" class="small py-2 mt-2" [dismissible]="false">
                   Nie udało się wygenerować opisu AI.

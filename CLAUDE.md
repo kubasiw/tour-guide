@@ -87,6 +87,8 @@ is complete; work now moves to "Beyond MVP" below.
    geometry. Revisit once there's an actual reason to render POIs on a map (this module's own trail
    proxy is currently a single node, not a real path, so "show the trail" isn't meaningful yet
    either) — don't build a bare decorative minimap just for its own sake.
+   **Graduated to a real roadmap step (2026-07-21):** the above "actual reason" now exists — see
+   step 10 below ("Map view for POIs").
    **Gotcha found while migrating this:** `prisma migrate dev` refuses to run at all (even with
    `--create-only`) for any schema change with a warning attached (e.g. "this could fail if
    duplicate data exists") when the shell is non-interactive — no bypass flag exists for `migrate
@@ -120,6 +122,8 @@ is complete; work now moves to "Beyond MVP" below.
    unnamed OSM features, e.g. a bare `tourism=trailhead` node, are now silently dropped); existing
    `"Unnamed POI"` rows were manually flushed from the dev DB, same one-off-cleanup precedent as the
    nightlife fix.
+   **Graduated to a real roadmap step (2026-07-21):** turning the search box into a live typeahead
+   — see step 9 below ("Search typeahead in `area-picker`").
 5. ✅ **Editable `Area` + 3-step stepper**: `shared/stepper/` now includes `area-picker` as a real
    step 1 — `PATCH /plans/:id/area` (`PlansService.updateArea`, a Prisma *nested* update through
    the `Plan.area` relation: `{ data: { area: { update: { geometry: ... } } } }`, since `Area` is
@@ -241,8 +245,57 @@ is complete; work now moves to "Beyond MVP" below.
    redesign in step 3 — so "AI narrates the day" from the original brief needs rethinking against
    what's actually there now). The place *name* itself ships via free Nominatim geocoding (step 4);
    only the *description* needed the LLM this step builds.
-9. Adaptive per-region theming on the generated plan view, once AI can classify an area's
-   character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
+   **Fix (2026-07-21): reverse geocoding ignored the drawn area's size.** User reported a big
+   circle around a whole town still produced a description/place-name for one specific
+   street/suburb — confirmed via a live Nominatim test that `reverse()` always requested `zoom=18`
+   (Nominatim's own default, since the code never passed a `zoom` param at all), so a big circle's
+   *center point* got reverse-geocoded at maximum precision regardless of how large the actual area
+   was. Fixed with `estimateReverseZoom(area)` (`backend/src/plans/area.type.ts`, mirrored in
+   `frontend/src/app/core/area.model.ts` — same `areaCenter` duplication precedent) — computes the
+   area's bounding-box diagonal in meters and maps it to a Nominatim `zoom` (0-18) via fixed
+   thresholds (`≤1km→17` down to `>60km→7`, deliberate/tunable, not rigorously derived), threaded
+   through both call sites of `GeocodingService.reverse()`: `PlansService.getAiDescription()`
+   (backend-only) and `plan-detail.ts`'s `placeName` resource (`GET /geocode/reverse?...&zoom=`,
+   new optional query param). Verified with a real 15 km vs. 300 m circle at the same center: the
+   large one now reads "Kraków" (city-level, both place name and AI description); the small one
+   still correctly reads "Kraków — Stare Miasto".
+9. ✅ **Search typeahead in `area-picker`** — as the user types (e.g. "Kra...") a dropdown of
+   matching place suggestions now appears to pick from, instead of the old submit-then-jump.
+   `GeocodingService.search()` (`backend/src/geocoding/geocoding.service.ts`) now asks Nominatim
+   for up to `SEARCH_RESULT_LIMIT = 5` results and returns `GeocodeSearchResult[]` (was a single
+   `| null`) — the only caller anywhere was `area-picker`, so this was a clean breaking change with
+   no other consumers. Frontend uses `@ng-bootstrap/ng-bootstrap`'s built-in `NgbTypeahead`
+   directive (already a dependency, no new package) instead of hand-rolling a dropdown — it handles
+   rendering/keyboard-nav/highlighting for free; the only app code is the `(text$) =>
+   Observable<readonly T[]>` search function piped through `debounceTime(300)` →
+   `distinctUntilChanged()` → `switchMap()`, plus `resultFormatter`/`inputFormatter` and a
+   `(selectItem)` handler reusing the existing `map.fitBounds()`/`map.flyTo()` logic. Terms under
+   `SEARCH_MIN_LENGTH = 3` chars short-circuit to an empty result (no request) and search errors
+   are swallowed to an empty result rather than an alert — both the concrete answer to Nominatim's
+   ~1 req/sec usage-policy constraint noted when this step was captured, verified via
+   `read_network_requests` showing exactly one request per typed term, not one per keystroke.
+   **Reactive Forms, not `ngModel`:** bound via `[formControl]` on a plain `FormControl<string>` to
+   stay consistent with `login`/`register`/`trip-details`'s existing `ReactiveFormsModule` pattern
+   — `FormsModule`/`ngModel` still isn't used anywhere in this app. **Gotcha hit during
+   verification:** this automated browser environment's synthetic mouse clicks and keydown events
+   don't reliably trigger `NgbTypeahead`'s internal selection commit (dropdown stayed open, no
+   selection registered) — same class of issue as the earlier documented Leaflet vertex-drag
+   simulation limitation. Worked around the same way: verified the actual app logic
+   (`onSelectItem()`'s `fitBounds`/`flyTo` branches) directly via
+   `window.ng.getComponent(el).onSelectItem({item, preventDefault(){}})` with constructed
+   `GeocodeSearchResult` objects (one with a `boundingBox`, one without), confirming both branches
+   move the map correctly — the dropdown rendering/debouncing/formatting itself was independently
+   confirmed via real typed input (suggestions appeared, correctly debounced, min-length respected).
+10. **Map view for POIs** — plot points on a map instead of/alongside `poi-picker`'s tile grid,
+    either (a) the plan's already-*selected* `PlanItem`s, or (b) the broader fetched/filtered
+    candidate set (already capped at `MAX_CANDIDATES = 24`, so "limit it somehow" is partly already
+    true) as small dots with popovers. Graduated from the map-preview idea captured under step 3
+    above once a concrete reason emerged. Genuinely undecided which shape this takes — a map-view
+    toggle inside `poi-picker` itself, vs. reusing `area-picker`'s existing Leaflet map later in the
+    flow to also plot points once a plan has selections — decide the concrete shape when starting
+    this step, don't half-build a generic "map component" preemptively.
+11. Adaptive per-region theming on the generated plan view, once AI can classify an area's
+    character — see the "Design direction" bullet below and `PROJECT_BRIEF.md`'s "Integracja AI".
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history
@@ -326,7 +379,22 @@ type-balanced but not distance-sorted from the area's center).
   returned `daily[].date` values are always the actual planned trip dates, never the historical
   sample dates the average was computed from. No `startDate`/`durationDays` (e.g. a `Plan` that
   hasn't reached `trip-details` yet) falls back to the original "next 5 days from today" behavior.
-- **POI / trails / monuments / restaurants = OpenStreetMap + Overpass API** — free, matches the
+  **Polish pass (2026-07-21): ±`CONTEXT_DAYS` (2) days of context around the trip, real-forecast
+  path only** (not `historical-estimate` — confirmed via `AskUserQuestion`) — `getForecast()`
+  widens the requested range by `CONTEXT_DAYS` on each side before calling `fetchForecast`.
+  Frontend already has the plan's real `startDate`/`durationDays` in hand (`plan-detail.html`
+  passes both to `<app-weather-forecast>`), so "which returned days are actually the trip" is a
+  pure client-side string-range check (`WeatherForecast.isInTrip()`) — no new backend response
+  fields needed. Non-trip days get `.weather-forecast__day--context` (reduced opacity); trip days
+  get `.weather-forecast__day--highlighted` (accent border, same `border-color: v.$accent` pattern
+  as `poi-tile--selected`). Same polish pass also fixed a **layout-shift (CLS) issue**: both the AI
+  description's loading state (was a small `variant="spinner"`, far smaller than the eventual 2-3
+  sentence paragraph) and the weather card's loading state (was a single generic vertical
+  `skeleton` block, shaped nothing like the real horizontal row of day-cards) caused a visible jump
+  once content arrived. Fixed by sizing the loading placeholder to approximate the final content:
+  AI description now uses `variant="skeleton" [lines]="3"`; weather now renders a same-shaped row
+  of `.weather-forecast__day`-sized placeholder cards (count estimated from `durationDays + 4`,
+  capped at 9) each containing its own skeleton loader, instead of one generic block.
   no-cost/open-source constraint.
 - **Geocoding (map search + reverse place names) = Nominatim** — OpenStreetMap's own free
   geocoding service, same free/no-key family as Overpass and Open-Meteo. Proxied through a new

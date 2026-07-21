@@ -3,7 +3,15 @@
     <h2 class="h5 mb-3">Weather forecast</h2>
 
     @if (forecast.isLoading()) {
-      <app-loader variant="skeleton" [lines]="3" />
+      <div class="d-flex flex-wrap gap-2">
+        @for (day of skeletonDays(); track day) {
+          <div class="card weather-forecast__day">
+            <div class="card-body p-1">
+              <app-loader variant="skeleton" [lines]="4" />
+            </div>
+          </div>
+        }
+      </div>
     } @else if (forecast.error()) {
       <ngb-alert type="danger" [dismissible]="false">
         <i class="bi bi-exclamation-triangle-fill me-2"></i>Couldn't load the weather forecast.
@@ -19,7 +27,11 @@
 
       <div class="d-flex flex-wrap gap-2">
         @for (day of value.daily; track day.date) {
-          <div class="card weather-forecast__day">
+          <div
+            class="card weather-forecast__day"
+            [class.weather-forecast__day--context]="!isInTrip(day.date)"
+            [class.weather-forecast__day--highlighted]="isInTrip(day.date)"
+          >
             <div class="card-body text-center p-1">
               <div class="weather-forecast__date text-muted">{{ day.date | date: 'EEE d.M' }}</div>
               <i

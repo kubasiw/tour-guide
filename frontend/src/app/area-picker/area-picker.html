@@ -9,28 +9,17 @@
     <app-stepper [steps]="stepList" />
   }
 
-  <form class="d-flex gap-2 mb-3" (submit)="onSearchSubmit($event, searchInput.value)">
-    <input
-      #searchInput
-      type="search"
-      class="form-control"
-      placeholder="Szukaj miejsca, np. Karkonosze albo ul. Gdańska"
-      aria-label="Szukaj miejsca na mapie"
-    />
-    <button type="submit" class="btn btn-outline-secondary" [disabled]="searching()">
-      @if (searching()) {
-        <app-loader variant="spinner" />
-      } @else {
-        <i class="bi bi-search"></i>
-      }
-    </button>
-  </form>
-
-  @if (searchError(); as message) {
-    <ngb-alert type="danger" class="mb-3" [dismissible]="false">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
-    </ngb-alert>
-  }
+  <input
+    type="search"
+    class="form-control mb-3"
+    placeholder="Szukaj miejsca, np. Karkonosze albo ul. Gdańska"
+    aria-label="Szukaj miejsca na mapie"
+    [formControl]="searchControl"
+    [ngbTypeahead]="searchTypeahead"
+    [resultFormatter]="resultFormatter"
+    [inputFormatter]="inputFormatter"
+    (selectItem)="onSelectItem($event)"
+  />
 
   <div #mapContainer class="area-picker__map"></div>
 

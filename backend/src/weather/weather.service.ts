@@ -27,6 +27,9 @@ const FORECAST_HORIZON_DAYS = 14;
 // chosen statistic — just enough to smooth out one unusually hot/cold year
 // without firing off excessive requests.
 const HISTORICAL_YEARS = 5;
+// Extra days shown before/after the trip's real dates (real-forecast path
+// only) so the user sees the weather trend leading into and out of the trip.
+const CONTEXT_DAYS = 2;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 @Injectable()
@@ -52,8 +55,12 @@ export class WeatherService {
       startDate,
     );
     if (daysUntilTrip <= FORECAST_HORIZON_DAYS) {
-      const endDate = this.addDays(startDate, durationDays - 1);
-      return this.fetchForecast(lat, lng, startDate, endDate);
+      const rangeStart = this.addDays(startDate, -CONTEXT_DAYS);
+      const rangeEnd = this.addDays(
+        this.addDays(startDate, durationDays - 1),
+        CONTEXT_DAYS,
+      );
+      return this.fetchForecast(lat, lng, rangeStart, rangeEnd);
     }
 
     return this.fetchHistoricalAverage(lat, lng, startDate, durationDays);

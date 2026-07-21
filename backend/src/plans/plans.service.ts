@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AreaDto } from './dto/area.dto';
 import { CreatePlanDto } from './dto/create-plan.dto';
 import { UpdatePlanDto } from './dto/update-plan.dto';
-import { Area, areaCenter } from './area.type';
+import { Area, areaCenter, estimateReverseZoom } from './area.type';
 
 export interface PlanWithArea {
   id: string;
@@ -123,8 +123,13 @@ export class PlansService {
       return { description: plan.aiDescription };
     }
 
-    const center = areaCenter(plan.area.geometry as unknown as Area);
-    const place = await this.geocodingService.reverse(center.lat, center.lng);
+    const area = plan.area.geometry as unknown as Area;
+    const center = areaCenter(area);
+    const place = await this.geocodingService.reverse(
+      center.lat,
+      center.lng,
+      estimateReverseZoom(area),
+    );
     const description = await this.aiService.generateAreaDescription(
       place.displayName,
     );

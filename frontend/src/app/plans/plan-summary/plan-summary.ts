@@ -13,14 +13,16 @@ import { areaCenter, estimateReverseZoom } from '../../core/area.model';
 import { GeocodingService } from '../../core/geocoding.service';
 import { POI_TYPE_COLORS, POI_TYPE_ICONS } from '../../core/poi.model';
 import { Loader } from '../../shared/loader/loader';
+import { Stepper } from '../../shared/stepper/stepper';
 import { WeatherForecast } from '../../weather/weather-forecast/weather-forecast';
 import { Plan } from '../plan.model';
 import { PlanService } from '../plan.service';
+import { buildPlanSteps } from '../plan-steps';
 import { PoiMap } from '../poi-map/poi-map';
 
 @Component({
   selector: 'app-plan-summary',
-  imports: [Loader, WeatherForecast, DatePipe, NgbAlert, RouterLink, PoiMap],
+  imports: [Loader, WeatherForecast, DatePipe, NgbAlert, RouterLink, PoiMap, Stepper],
   templateUrl: './plan-summary.html',
   styleUrl: './plan-summary.scss',
 })
@@ -37,6 +39,8 @@ export class PlanSummary {
   protected readonly areaThemeLabels = AREA_THEME_LABELS;
 
   protected readonly plan = httpResource<Plan>(() => `${API_BASE_URL}/plans/${this.id()}`);
+
+  protected readonly steps = computed(() => buildPlanSteps(this.plan.value(), this.id(), 'summary'));
 
   protected readonly items = rxResource({
     params: () => this.id(),

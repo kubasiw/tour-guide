@@ -1,0 +1,80 @@
+@use 'variables' as v;
+
+// Boxed, non-fullscreen map — same convention as `plans/poi-map/poi-map.scss`'s
+// `.poi-map__container` (height + border-radius + overflow: hidden). This
+// replaces the old area-picker's full-viewport-height flex host: this is a
+// normal scrolling page now, with sections below the map, not an edge-to-edge
+// map with everything else floating on top of it.
+.plan-setup__map-wrap {
+  position: relative;
+  height: 420px;
+  border-radius: v.$border-radius;
+  overflow: hidden;
+}
+
+.plan-setup__map {
+  height: 100%;
+  width: 100%;
+}
+
+// Floating search overlay — centered pill sitting on top of the map,
+// deliberately narrow so it doesn't collide with Leaflet's own top-left
+// zoom control + draw toolbar (both live in that one corner).
+.plan-setup__search {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 2rem);
+  max-width: 420px;
+  border-radius: v.$border-radius;
+  box-shadow: none;
+}
+
+.plan-setup__date-input {
+  max-width: 320px;
+}
+
+// Custom day cell for the date-range picker (ng-bootstrap's own documented
+// range-selection recipe — no built-in range mode, styled via a custom
+// dayTemplate). Trail green for the two endpoints, a light tint for the days
+// between, matching this app's "one accent used consistently" convention.
+.trip-range-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+}
+
+.trip-range-day--range {
+  background-color: var(--color-trail-green-bg);
+  border-radius: 0;
+}
+
+.trip-range-day--from,
+.trip-range-day--to {
+  background-color: var(--color-trail-green);
+  color: #fff;
+}
+
+.trip-range-day--from {
+  border-radius: 50% 0 0 50%;
+}
+
+.trip-range-day--to {
+  border-radius: 0 50% 50% 0;
+}
+
+.trip-range-day--focused {
+  outline: 2px solid var(--color-trail-green);
+  outline-offset: 1px;
+}
+
+// Waymarked Trails overlay toggle + legend styling lives in the global
+// `_leaflet-overrides.scss` instead, not here — see that file's own comment
+// for why (imperatively-created `L.DomUtil.create(...)` elements never get
+// Angular's view-encapsulation attribute, so component-scoped rules here
+// would silently never match them).

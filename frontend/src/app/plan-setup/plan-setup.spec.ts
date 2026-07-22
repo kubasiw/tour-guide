@@ -1,15 +1,15 @@
 import { TestBed } from '@angular/core/testing';
-import { AreaPicker } from './area-picker';
+import { PlanSetup } from './plan-setup';
 
-describe('AreaPicker', () => {
+describe('PlanSetup', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AreaPicker],
+      imports: [PlanSetup],
     }).compileComponents();
   });
 
   it('should create', () => {
-    const fixture = TestBed.createComponent(AreaPicker);
+    const fixture = TestBed.createComponent(PlanSetup);
     fixture.detectChanges();
     expect(fixture.componentInstance).toBeTruthy();
   });

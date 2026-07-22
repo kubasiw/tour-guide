@@ -1,0 +1,120 @@
+<div class="container py-4">
+  @if (plan.error()) {
+    <ngb-alert type="danger" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Plan nie został znaleziony.
+    </ngb-alert>
+  } @else {
+    <app-stepper [steps]="steps()" />
+
+    <h1 class="h3 mb-1">{{ id() ? 'Edytuj plan' : 'Zaplanuj podróż' }}</h1>
+    <p class="text-body-secondary mb-4">
+      Zaznacz obszar na mapie, wybierz co Cię interesuje i podaj termin pobytu.
+    </p>
+
+    <div class="plan-setup__map-wrap">
+      <div #mapContainer class="plan-setup__map"></div>
+
+      <input
+        type="search"
+        class="plan-setup__search form-control"
+        placeholder="Szukaj miejsca, np. Karkonosze albo ul. Gdańska"
+        aria-label="Szukaj miejsca na mapie"
+        [formControl]="searchControl"
+        [ngbTypeahead]="searchTypeahead"
+        [resultFormatter]="resultFormatter"
+        [inputFormatter]="inputFormatter"
+        (selectItem)="onSelectItem($event)"
+      />
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 my-3">
+      @if (area(); as selected) {
+        <app-area-summary [area]="selected" />
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="clear()">
+          <i class="bi bi-x-circle me-1"></i>Wyczyść
+        </button>
+      } @else {
+        <p class="text-body-secondary mb-0">Narysuj obszar na mapie, aby kontynuować.</p>
+      }
+    </div>
+
+    <h2 class="h5 mb-3">Aktywności</h2>
+    <div class="d-flex flex-wrap gap-2 mb-4">
+      @for (activity of activities; track activity.key) {
+        <button
+          type="button"
+          class="btn"
+          [class.btn-primary]="selectedActivities().has(activity.key)"
+          [class.btn-outline-secondary]="!selectedActivities().has(activity.key)"
+          (click)="toggleActivity(activity.key)"
+        >
+          <i class="bi {{ activity.icon }} me-1"></i>{{ activity.label }}
+        </button>
+      }
+    </div>
+
+    <h2 class="h5 mb-3">Termin</h2>
+    <div class="mb-4">
+      <label for="dateRange" class="form-label">Termin pobytu</label>
+      <div class="input-group plan-setup__date-input">
+        <input
+          id="dateRange"
+          type="text"
+          class="form-control"
+          readonly
+          [value]="rangeDisplay()"
+          placeholder="Wybierz zakres dat"
+          ngbDatepicker
+          [autoClose]="false"
+          [minDate]="minDate"
+          [dayTemplate]="dayTemplate"
+          (dateSelect)="onDateSelect($event, dp)"
+          #dp="ngbDatepicker"
+        />
+        <button
+          type="button"
+          class="btn btn-outline-secondary"
+          aria-label="Otwórz kalendarz"
+          (click)="dp.toggle()"
+        >
+          <i class="bi bi-calendar3"></i>
+        </button>
+      </div>
+    </div>
+
+    @if (errorMessage(); as message) {
+      <ngb-alert type="danger" [dismissible]="false">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+      </ngb-alert>
+    }
+
+    <button
+      type="button"
+      class="btn btn-accent"
+      [class.btn-loading]="submitting()"
+      [disabled]="!area() || submitting()"
+      (click)="submit()"
+    >
+      <span class="btn-loading__label">
+        <i class="bi bi-check2-circle me-1"></i>{{ id() ? 'Zapisz zmiany' : 'Utwórz plan' }}
+      </span>
+      @if (submitting()) {
+        <app-loader variant="spinner" class="btn-loading__spinner" />
+      }
+    </button>
+
+    <ng-template #dayTemplate let-date let-focused="focused">
+      <span
+        class="trip-range-day"
+        [class.trip-range-day--range]="isInRange(date)"
+        [class.trip-range-day--from]="isFrom(date)"
+        [class.trip-range-day--to]="isTo(date)"
+        [class.trip-range-day--focused]="focused"
+        (mouseenter)="hoveredDate.set(date)"
+        (mouseleave)="hoveredDate.set(null)"
+      >
+        {{ date.day }}
+      </span>
+    </ng-template>
+  }
+</div>

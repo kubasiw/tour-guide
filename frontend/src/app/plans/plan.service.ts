@@ -18,8 +18,8 @@ export interface UpdatePlanPayload {
 export class PlanService {
   private readonly http = inject(HttpClient);
 
-  public create(area: Area): Observable<Plan> {
-    return this.http.post<Plan>(`${API_BASE_URL}/plans`, { area });
+  public create(area: Area, extra?: UpdatePlanPayload): Observable<Plan> {
+    return this.http.post<Plan>(`${API_BASE_URL}/plans`, { area, ...extra });
   }
 
   public listMine(): Observable<Plan[]> {

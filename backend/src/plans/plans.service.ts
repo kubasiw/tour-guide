@@ -39,7 +39,16 @@ export class PlansService {
   ): Promise<PlanWithArea> {
     const plan = await this.prisma.$transaction(
       async (tx: Prisma.TransactionClient) => {
-        const created = await tx.plan.create({ data: { userId } });
+        const created = await tx.plan.create({
+          data: {
+            userId,
+            ...(dto.activities !== undefined && { activities: dto.activities }),
+            ...(dto.startDate !== undefined && { startDate: dto.startDate }),
+            ...(dto.durationDays !== undefined && {
+              durationDays: dto.durationDays,
+            }),
+          },
+        });
         const area = await tx.area.create({
           data: {
             planId: created.id,

@@ -305,6 +305,72 @@ is complete; work now moves to "Beyond MVP" below.
    fully support editing an existing `Plan` (confirmed working end-to-end for area editing in step
    5 itself) — the icon(s) just need to `routerLink` there. Once the single-view redesign happens,
    this same icon would naturally become the entry point *into* that combined view instead.
+   **✅ Built (2026-07-22): the single-view redesign itself.** The 3 separate routed steps are gone
+   — `area-picker/`, `activity-selector/`, `trip-details/`, `shared/stepper/`, and
+   `shared/area-preview/` were all deleted (confirmed unused elsewhere via grep first) and merged
+   into one new `frontend/src/app/plan-setup/` (`PlanSetup`, `<app-plan-setup>`) — a rename, not
+   just a move, since the component's scope grew well past "pick an area" (same precedent as the
+   `panel-card` mixin rename below when its own scope outgrew `auth-card`). One screen: the
+   interactive Leaflet map (draw/edit area, search typeahead, Waymarked Trails toggle — all
+   unchanged) now renders as a normal boxed block (~420px, same convention as `poi-map.scss`'s
+   `.poi-map__container`) instead of the old full-viewport-height flex host, with the activity
+   toggles and the date-range picker stacked as plain sections below it, and one "Utwórz plan"/
+   "Zapisz zmiany" button at the bottom — confirmed via `AskUserQuestion` over the floating-side-
+   panel-on-a-fullscreen-map alternative. **Validation: only an area is required to submit** —
+   activities and dates stay optional and are simply included in the save if filled in, matching
+   `PATCH /plans/:id`'s existing independently-optional fields; this was a deliberate choice over
+   forcing all three fields, since the old per-step "Dalej" gating was a UI suggestion, never a
+   real server-enforced order. **Backend: `CreatePlanDto` gained the same optional
+   `activities`/`startDate`/`durationDays` fields `UpdatePlanDto` already had** (identical
+   validators), so a brand-new plan's full setup now persists in a single `POST /plans` call
+   instead of the old create-then-two-PATCHes chain; `PlansService.create`'s transaction was
+   extended with the same conditional-spread pattern `update()` already used. **Frontend submit
+   logic**: create mode calls `planService.create(area, extra)` directly; edit mode fires
+   `updateArea` and `update` together via `forkJoin` (new to this app, plain `rxjs`, no new
+   dependency) and maps the tuple result down to a single `Plan` via `map()` so both branches of
+   the `id() ? ... : ...` ternary produce the same `Observable<Plan>` type — the naive version (a
+   union of `Observable<[Plan,Plan]>` and `Observable<Plan>`) fails to typecheck since `.subscribe()`
+   can't unify incompatible callback signatures across the union. **Routes**: `''` and
+   `plans/:id/setup` (renamed from `plans/:id/area`) both map to `PlanSetup`;
+   `plans/:id/activities`/`plans/:id/trip-details` are gone entirely — grepped first to confirm
+   `plan-detail.html`/`my-plans.html` never linked to them (only to `/` and `/plans/:id`), so no
+   dangling links were left behind. **Verified end-to-end**: a full anonymous create (draw area,
+   toggle 2 activities, pick a 3-day range, submit) landed on `/plans/:id` with all fields
+   persisted in one call (checked via a direct `GET /plans/:id`); revisiting `/plans/:id/setup` on
+   that plan correctly seeded the existing area/activities/dates back into the form; changing the
+   area and swapping one activity and saving persisted both through the `forkJoin`d edit path;
+   checked at both desktop and mobile width (375px, no horizontal overflow, all 6 activity buttons
+   and their selected state confirmed via direct DOM query after the environment's screenshot
+   renderer showed a visually truncated — but not actually broken — layout, same known scaling
+   quirk documented elsewhere in this file).
+   **✅ Built (2026-07-22): the `Stepper` restored as a persistent 3-stage progress indicator.**
+   The single-view redesign above initially deleted `shared/stepper/` along with the 3 old
+   micro-steps it tracked (Obszar/Aktywności/Termin) — the user asked to bring it back, repurposed
+   for the app's actual 3 macro stages instead: **Planowanie** (`plan-setup`, area+activities+dates)
+   → **Ustal szczegóły** (`plan-detail`+`poi-picker`, picking places) → **Twój plan**
+   (`plan-summary`, the finalized read-only view) — shown persistently at the top of all three
+   screens now, not just during initial creation. Since nothing had been committed yet, the
+   deleted `shared/stepper/*` and `plans/plan-steps.ts` files were restored verbatim via `git
+   checkout --` rather than reconstructed from memory — confirmed the exact original template
+   logic first (`stepper.html`): a step only renders as a clickable link when `completed`, the
+   `current` step is a plain highlighted (non-link) bubble, and anything neither current nor
+   completed is an inert gray number — this meant no changes to `Stepper`/`stepper.html`/
+   `stepper.scss` themselves were needed at all, only a new `buildPlanSteps(plan, id, current)` in
+   `plan-steps.ts` (same filename, rewritten contents) producing the 3 new stages. **Completion
+   rules, decided pragmatically since a plan is always fully editable regardless of stage (no
+   cascading resets, existing precedent):** stage 1 "completed" = a plan exists (`id` present) —
+   the setup screen is freely revisitable any time; stage 2 "completed" = `plan.status ===
+   'final'` — reads as done specifically once the user has actually finalized (matches the user's
+   own framing: finishing planning via "Zakończ planowanie" is what unlocks the summary stage);
+   stage 3 is never "completed" (nothing comes after it). Each of the 3 host components computes
+   its own `steps = computed(() => buildPlanSteps(plan.value(), id(), '<its-own-stage>'))` and
+   renders `<app-stepper [steps]="steps()" />` as the first thing on the page, above its own
+   heading. **Verified live**: on `plan-setup` (no plan yet) stage 1 shows as the current bubble,
+   stages 2/3 as locked plain numbers; after creating a plan and viewing `plan-detail`, stage 1
+   flips to a completed clickable link back to `/setup` (confirmed the link actually navigates)
+   while stage 2 becomes current; after finalizing and viewing `plan-summary`, stage 2 also
+   becomes a completed clickable link back to `/plans/:id` while stage 3 is current — checked at
+   mobile width too (no horizontal overflow).
    **✅ Built (2026-07-22): switched trip dates from start-date-plus-duration to a real date-range
    picker** (arrival + departure, not arrival + "number of nights" requiring mental math) — prompted
    by the user noticing the native `input[type=date]` had visibly different internal spacing than
@@ -984,12 +1050,14 @@ of testing every small change end-to-end regardless of size):
   than a root module. Cross-cutting services (e.g. `src/app/core/health.service.ts`) live under
   `src/app/core/`.
 - The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/` ✅,
-  `area-picker/` ✅, `activity-selector/` ✅, `trip-details/` ✅, `plan-view/` (currently `plans/
-  plan-detail/`, a minimal stand-in — may get renamed/expanded once real generation exists),
-  `plan-chat/` ✅ (built as `plans/plan-chat/`, nested under `plans/` alongside `poi-picker`/
-  `plan-summary` rather than the brief's own top-level sketch — deliberate deviation, consistent
-  with this project's established practice of nesting all plan-specific components under `plans/`),
-  `my-plans/` ✅ — the rest don't exist yet, add them in the order in the Roadmap above.
+  `plan-view/` (currently `plans/plan-detail/`, a minimal stand-in — may get renamed/expanded once
+  real generation exists), `plan-chat/` ✅ (built as `plans/plan-chat/`, nested under `plans/`
+  alongside `poi-picker`/`plan-summary` rather than the brief's own top-level sketch — deliberate
+  deviation, consistent with this project's established practice of nesting all plan-specific
+  components under `plans/`), `my-plans/` ✅ — the rest don't exist yet, add them in the order in
+  the Roadmap above. **`area-picker/`/`activity-selector/`/`trip-details/` no longer exist as
+  separate folders** (2026-07-22 single-view redesign, see the Roadmap's step 5 entry) — merged
+  into one `plan-setup/` covering the whole area+activities+dates setup flow.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
   (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
   step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅,
@@ -1284,7 +1352,8 @@ Frontend-specific:
   multiple concerns (backend `auth.service.ts`'s shared `buildToken` helper is the existing example
   to follow). Run the `simplify` skill after finishing a feature slice as the concrete check for
   this, rather than relying on manual vigilance alone.
-- **Leaflet** (`frontend/src/app/area-picker/area-picker.ts`): import as `import * as L from
+- **Leaflet** (`frontend/src/app/plan-setup/plan-setup.ts`, moved here from the deleted
+  `area-picker/` during the 2026-07-22 single-view redesign): import as `import * as L from
   'leaflet'; import 'leaflet-draw';` (the second is a side-effect import that attaches
   `L.Control.Draw`/`L.Draw.*` to the `L` namespace). Gotcha: Leaflet's default marker icon paths
   (used by leaflet-draw for polygon vertex handles) don't resolve through a bundler — fixed by

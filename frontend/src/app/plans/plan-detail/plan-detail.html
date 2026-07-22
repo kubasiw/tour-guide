@@ -4,6 +4,8 @@
   } @else if (plan.error()) {
     <p><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Plan not found.</p>
   } @else if (plan.value(); as value) {
+    <app-stepper [steps]="steps()" />
+
     <h1 class="h3 mb-3">Planowanie podróży</h1>
 
     @if (value.status === planStatusFinal) {

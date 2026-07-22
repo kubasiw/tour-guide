@@ -13,17 +13,34 @@ import {
 import { httpResource } from '@angular/common/http';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { NgbAlert, NgbTypeahead, NgbTypeaheadSelectItemEvent } from '@ng-bootstrap/ng-bootstrap';
+import {
+  NgbAlert,
+  NgbCalendar,
+  NgbDate,
+  NgbInputDatepicker,
+  NgbTypeahead,
+  NgbTypeaheadSelectItemEvent,
+} from '@ng-bootstrap/ng-bootstrap';
 import * as L from 'leaflet';
 import 'leaflet-draw';
-import { Observable, catchError, debounceTime, distinctUntilChanged, of, switchMap } from 'rxjs';
+import {
+  Observable,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  forkJoin,
+  map,
+  of,
+  switchMap,
+} from 'rxjs';
+import { ACTIVITIES } from '../core/activity.model';
 import { API_BASE_URL } from '../core/api-base-url';
 import { Area } from '../core/area.model';
 import { GeocodeSearchResult, GeocodingService } from '../core/geocoding.service';
 import { extractErrorMessage } from '../core/http-error';
 import { buildPlanSteps } from '../plans/plan-steps';
 import { Plan } from '../plans/plan.model';
-import { PlanService } from '../plans/plan.service';
+import { PlanService, UpdatePlanPayload } from '../plans/plan.service';
 import { AreaSummary } from '../shared/area-summary/area-summary';
 import { Loader } from '../shared/loader/loader';
 import { Stepper } from '../shared/stepper/stepper';
@@ -42,13 +59,35 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'leaflet-images/marker-shadow.png',
 });
 
+function pad(value: number): string {
+  return value.toString().padStart(2, '0');
+}
+
+function formatNgbDate(date: NgbDate): string {
+  return `${date.year}-${pad(date.month)}-${pad(date.day)}`;
+}
+
+function daysBetween(start: NgbDate, end: NgbDate): number {
+  const startUtc = Date.UTC(start.year, start.month - 1, start.day);
+  const endUtc = Date.UTC(end.year, end.month - 1, end.day);
+  return Math.round((endUtc - startUtc) / 86_400_000);
+}
+
 @Component({
-  selector: 'app-area-picker',
-  imports: [AreaSummary, Loader, NgbAlert, Stepper, ReactiveFormsModule, NgbTypeahead],
-  templateUrl: './area-picker.html',
-  styleUrl: './area-picker.scss',
+  selector: 'app-plan-setup',
+  imports: [
+    AreaSummary,
+    Loader,
+    NgbAlert,
+    ReactiveFormsModule,
+    NgbTypeahead,
+    NgbInputDatepicker,
+    Stepper,
+  ],
+  templateUrl: './plan-setup.html',
+  styleUrl: './plan-setup.scss',
 })
-export class AreaPicker {
+export class PlanSetup {
   public readonly id = input<string>();
 
   private readonly mapContainer = viewChild.required<ElementRef<HTMLDivElement>>('mapContainer');
@@ -56,18 +95,16 @@ export class AreaPicker {
   private readonly planService = inject(PlanService);
   private readonly geocodingService = inject(GeocodingService);
   private readonly router = inject(Router);
+  private readonly calendar = inject(NgbCalendar);
 
   protected readonly plan = httpResource<Plan>(() =>
     this.id() ? `${API_BASE_URL}/plans/${this.id()}` : undefined,
   );
 
-  protected readonly steps = computed(() => {
-    const id = this.id();
-    return id ? buildPlanSteps(this.plan.value(), id, 'area') : null;
-  });
+  protected readonly steps = computed(() => buildPlanSteps(this.plan.value(), this.id(), 'setup'));
 
   protected readonly area = signal<Area | null>(null);
-  protected readonly confirming = signal(false);
+  protected readonly submitting = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   // On by default per user request (2026-07-22) — trails are useful enough on first
   // view that requiring an extra click no longer earns its keep now that the toggle
@@ -76,9 +113,30 @@ export class AreaPicker {
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
+  protected readonly activities = ACTIVITIES;
+  protected readonly selectedActivities = signal<ReadonlySet<string>>(new Set());
+
+  // Not a Reactive Form — this is a single transient date-range field, same
+  // "no form needed for one field" precedent as the search box below.
+  // fromDate/toDate/hoveredDate drive a custom day template for range
+  // highlighting (ng-bootstrap's own documented range-picker recipe).
+  protected readonly fromDate = signal<NgbDate | null>(null);
+  protected readonly toDate = signal<NgbDate | null>(null);
+  protected readonly hoveredDate = signal<NgbDate | null>(null);
+  protected readonly minDate = this.calendar.getToday();
+
+  protected readonly rangeDisplay = computed(() => {
+    const from = this.fromDate();
+    const to = this.toDate();
+    if (!from) {
+      return '';
+    }
+    return to ? `${formatNgbDate(from)}  →  ${formatNgbDate(to)}` : formatNgbDate(from);
+  });
+
   private readonly mapSignal = signal<L.Map | undefined>(undefined);
   private drawnItems?: L.FeatureGroup;
-  private hasDrawnExisting = false;
+  private hasSeededExisting = false;
   private trailsLayer?: L.TileLayer;
   private trailsLegendControl?: L.Control;
 
@@ -88,9 +146,18 @@ export class AreaPicker {
     effect(() => {
       const map = this.mapSignal();
       const plan = this.plan.value();
-      if (map && plan && !this.hasDrawnExisting) {
-        this.hasDrawnExisting = true;
+      if (map && plan && !this.hasSeededExisting) {
+        this.hasSeededExisting = true;
         this.drawExistingArea(map, plan.area);
+        this.selectedActivities.set(new Set(plan.activities));
+
+        if (plan.startDate) {
+          const [year, month, day] = plan.startDate.slice(0, 10).split('-').map(Number);
+          const startDate = new NgbDate(year, month, day);
+          const endDate = this.calendar.getNext(startDate, 'd', plan.durationDays ?? 3);
+          this.fromDate.set(startDate);
+          this.toDate.set(endDate);
+        }
       }
     });
   }
@@ -98,6 +165,48 @@ export class AreaPicker {
   protected clear(): void {
     this.area.set(null);
     this.drawnItems?.clearLayers();
+  }
+
+  protected toggleActivity(key: string): void {
+    const next = new Set(this.selectedActivities());
+    if (next.has(key)) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+    this.selectedActivities.set(next);
+  }
+
+  protected onDateSelect(date: NgbDate, datepicker: NgbInputDatepicker): void {
+    const from = this.fromDate();
+    const to = this.toDate();
+
+    if (!from || to) {
+      this.fromDate.set(date);
+      this.toDate.set(null);
+    } else if (date.after(from)) {
+      this.toDate.set(date);
+      datepicker.close();
+    } else {
+      this.fromDate.set(date);
+      this.toDate.set(null);
+    }
+  }
+
+  protected isFrom(date: NgbDate): boolean {
+    const from = this.fromDate();
+    return from !== null && date.equals(from);
+  }
+
+  protected isTo(date: NgbDate): boolean {
+    const to = this.toDate();
+    return to !== null && date.equals(to);
+  }
+
+  protected isInRange(date: NgbDate): boolean {
+    const from = this.fromDate();
+    const to = this.toDate() ?? this.hoveredDate();
+    return from !== null && to !== null && date.after(from) && date.before(to);
   }
 
   protected readonly searchTypeahead = (
@@ -131,24 +240,43 @@ export class AreaPicker {
     }
   }
 
-  protected confirm(): void {
+  protected submit(): void {
     const area = this.area();
     if (!area) {
       return;
     }
 
-    this.confirming.set(true);
+    this.submitting.set(true);
     this.errorMessage.set(null);
 
+    const from = this.fromDate();
+    const to = this.toDate();
+
+    const extra: UpdatePlanPayload = {
+      // Always sent, including empty — lets clearing all activities in edit
+      // mode actually persist, rather than silently being dropped.
+      activities: [...this.selectedActivities()],
+      ...(from !== null &&
+        to !== null &&
+        to.after(from) && {
+          startDate: formatNgbDate(from),
+          durationDays: daysBetween(from, to),
+        }),
+    };
+
     const id = this.id();
-    const request = id ? this.planService.updateArea(id, area) : this.planService.create(area);
+    const request: Observable<Plan> = id
+      ? forkJoin([this.planService.updateArea(id, area), this.planService.update(id, extra)]).pipe(
+          map(([, updated]) => updated),
+        )
+      : this.planService.create(area, extra);
 
     request.subscribe({
       next: (plan) => {
-        void this.router.navigate(['/plans', plan.id, 'activities']);
+        void this.router.navigate(['/plans', plan.id]);
       },
       error: (err: unknown) => {
-        this.confirming.set(false);
+        this.submitting.set(false);
         this.errorMessage.set(extractErrorMessage(err));
       },
     });
@@ -232,15 +360,11 @@ export class AreaPicker {
     // `margin-top`, confirmed by reading leaflet.css directly), so this
     // simply appends below the draw toolbar with the same natural gap that
     // already separates the zoom control from the draw toolbar above it —
-    // no manual positioning/collision math needed. Verified live (not
-    // assumed) that this does NOT collide with `.area-picker__search`'s
-    // floating pill at mobile widths: the toolbar stack (zoom + draw)
-    // already extends to ~y:349, well below the search pill's ~y:157
-    // bottom edge, so anything appended after it starts already clear.
+    // no manual positioning/collision math needed.
     const toggleControl = new L.Control({ position: 'topleft' });
 
     toggleControl.onAdd = (): HTMLElement => {
-      const container = L.DomUtil.create('div', 'leaflet-bar area-picker__trails-toggle');
+      const container = L.DomUtil.create('div', 'leaflet-bar plan-setup__trails-toggle');
       const button = L.DomUtil.create('a', '', container);
       button.href = '#';
       button.setAttribute('role', 'button');
@@ -273,7 +397,7 @@ export class AreaPicker {
   }
 
   private applyTrailsVisibility(map: L.Map, button: HTMLElement, visible: boolean): void {
-    button.classList.toggle('area-picker__trails-toggle--active', visible);
+    button.classList.toggle('plan-setup__trails-toggle--active', visible);
 
     if (visible) {
       this.trailsLayer?.addTo(map);
@@ -293,7 +417,7 @@ export class AreaPicker {
     const legendControl = new L.Control({ position: 'bottomleft' });
 
     legendControl.onAdd = (): HTMLElement => {
-      const container = L.DomUtil.create('div', 'area-picker__trails-legend');
+      const container = L.DomUtil.create('div', 'plan-setup__trails-legend');
       container.innerHTML =
         'Szlaki: <a href="https://waymarkedtrails.org" target="_blank" rel="noopener">Waymarked Trails</a>';
       L.DomEvent.disableClickPropagation(container);

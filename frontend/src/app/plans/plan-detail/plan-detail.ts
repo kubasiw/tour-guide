@@ -11,15 +11,17 @@ import { areaCenter, estimateReverseZoom } from '../../core/area.model';
 import { GeocodingService } from '../../core/geocoding.service';
 import { AuthService } from '../../auth/auth.service';
 import { Loader } from '../../shared/loader/loader';
+import { Stepper } from '../../shared/stepper/stepper';
 import { WeatherForecast } from '../../weather/weather-forecast/weather-forecast';
 import { Plan } from '../plan.model';
 import { PlanService } from '../plan.service';
 import { PLAN_STATUS_FINAL } from '../plan-status';
+import { buildPlanSteps } from '../plan-steps';
 import { PoiPicker } from '../poi-picker/poi-picker';
 
 @Component({
   selector: 'app-plan-detail',
-  imports: [Loader, WeatherForecast, DatePipe, PoiPicker, NgbAlert, RouterLink],
+  imports: [Loader, WeatherForecast, DatePipe, PoiPicker, NgbAlert, RouterLink, Stepper],
   templateUrl: './plan-detail.html',
 })
 export class PlanDetail {
@@ -31,6 +33,8 @@ export class PlanDetail {
   protected readonly planStatusFinal = PLAN_STATUS_FINAL;
 
   protected readonly plan = httpResource<Plan>(() => `${API_BASE_URL}/plans/${this.id()}`);
+
+  protected readonly steps = computed(() => buildPlanSteps(this.plan.value(), this.id(), 'details'));
 
   protected readonly center = computed(() => {
     const plan = this.plan.value();

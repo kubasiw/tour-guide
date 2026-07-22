@@ -68,6 +68,12 @@ is complete; work now moves to "Beyond MVP" below.
    map), not something to fold into that work. Before building: confirm the exact endpoint/response
    shape with a live curl first, same precedent as Overpass QL was confirmed early on — don't
    assume the API shape from documentation/memory alone.
+   **Reinforced (2026-07-22):** user asked again whether the map itself needs to change, or a
+   trails-specific API added, to show/search real trail geometry. Answer stays Waymarked Trails —
+   worth noting explicitly: it's consumed as an **additional tile/overlay layer on the existing
+   Leaflet map**, not a map replacement (same `L.tileLayer`-style integration already used for the
+   OSM base tiles), plus their own separate query API for trail search. No reason to swap away from
+   Leaflet/OSM for this.
 3. ✅ `PlanGeneratorModule` — `GET /plans/:id/candidates` maps the plan's `activities` to
    `PoiType`s (`plan-generator/activity-poi-mapping.ts`), fetches matches via
    `PoiService.findInBoundingBox`, and returns them balanced round-robin across the matched
@@ -100,6 +106,13 @@ is complete; work now moves to "Beyond MVP" below.
    worth trying the free OSM-tag route first, given `PoiTile` can render up to `MAX_CANDIDATES = 24`
    tiles at once and a naive "generate on first render" AI approach would mean up to 24 LLM calls
    per page load unless carefully cached/batched.
+   **Reinforced (2026-07-22):** user asked again — same answer stands (try OSM `description`/`note`
+   tags first, free and already-fetched via Overpass; AI-cached descriptions are the fallback for
+   POIs with nothing usable, not the first move given the 24-tiles-per-render cost concern above).
+   Not yet checked how commonly these OSM tags are actually populated in this app's real ingested
+   data — worth a quick real-data check (e.g. a count of non-null `description`/`note` keys inside
+   already-cached `Poi.sourceData`) before committing to the OSM-first plan, in case it turns out too
+   sparse to be worth shipping on its own.
    **Idea captured, not built (2026-07-20):** a small map preview on every pre-generation screen
    (`activity-selector`, `trip-details`), not just `area-picker` — user's own framing was that this
    could later double as a way to show selected attractions/trails once `PlanItem`s carry real
@@ -108,6 +121,17 @@ is complete; work now moves to "Beyond MVP" below.
    either) — don't build a bare decorative minimap just for its own sake.
    **Graduated to a real roadmap step (2026-07-21):** the above "actual reason" now exists — see
    step 10 below ("Map view for POIs").
+   **Idea captured, not built (2026-07-22), a more specific reframing of the idea above:** user
+   asked whether `activity-selector` and `trip-details` could show a **read-only preview** of what's
+   already been confirmed — the drawn `Area` on a small non-interactive map, and (once past
+   `activity-selector`) the selected activity badges too — so the user isn't just staring at a bare
+   form with no visual continuity from the step before. Recommendation: a small non-interactive
+   Leaflet map (no draw controls, just `L.tileLayer` + the existing `Area`-to-layer drawing logic
+   already in `area-picker.ts`'s `drawExistingArea`/`layerToArea` — reusable as-is, just without
+   `L.Control.Draw`) plus the same activity badges markup `plan-detail`/`plan-summary` already use.
+   Where exactly this preview lives (a persistent sidebar column vs. a collapsed summary card above
+   the form) is a real layout decision worth its own short design pass, not something to bolt on as
+   a one-line addition.
    **Gotcha found while migrating this:** `prisma migrate dev` refuses to run at all (even with
    `--create-only`) for any schema change with a warning attached (e.g. "this could fail if
    duplicate data exists") when the shell is non-interactive — no bypass flag exists for `migrate

@@ -21,3 +21,81 @@
   height: 44px;
   line-height: 44px;
 }
+
+// Waymarked Trails overlay toggle (area-picker.ts) — top-left corner,
+// stacked below the zoom control + draw toolbar (moved from bottom-right
+// after user feedback that it was too easy to miss there; see area-picker.ts
+// for why this position doesn't collide with `.area-picker__search`).
+//
+// Gotcha (new, distinct from the marker-icon-path one above): this styling
+// belongs in a *global* partial, not `area-picker.scss`, even though it's
+// only used by that one component. `L.DomUtil.create(...)` builds these
+// elements imperatively in TypeScript, entirely outside Angular's template
+// compiler — so they never receive the `_ngcontent-*` attribute Angular's
+// (default) Emulated view encapsulation uses to scope component styles.
+// Scoped rules for `.area-picker__trails-toggle`/`-legend` silently matched
+// nothing at runtime (confirmed via `getComputedStyle` showing Leaflet's own
+// default margin winning, not ours) until moved here — the same underlying
+// reason `_leaflet-overrides.scss` already exists as a global file, just not
+// previously spelled out this explicitly. Any future custom `L.Control` in
+// this app needs its CSS here too, not in that component's own `.scss`.
+//
+// Also hit the *exact* same specificity trap as the zoom-control fix above,
+// confirmed by reading leaflet.css directly: `.leaflet-touch .leaflet-bar a`
+// (2 classes) beats a plain `.area-picker__trails-toggle a` (1 class)
+// regardless of source order, and `.leaflet-bottom .leaflet-control` (2
+// classes) does the same to a plain `.area-picker__trails-legend` margin —
+// match Leaflet's own ancestor-class shape explicitly, don't just add one
+// flat rule and assume load order alone will win.
+// Icon is trail-green even at rest (not the plain ink/gray of the zoom and
+// draw-toolbar glyphs next to it) — a deliberate, deliberately small color
+// cue so it reads as a distinct app feature amid otherwise-identical white
+// Leaflet buttons, addressing the same "easy to miss" feedback as the
+// reposition above. Filled solid green + white icon when active, same
+// on/off-state pattern as every other toggle in this app (e.g. the
+// grid/map/split view toggle in `poi-picker`).
+.area-picker__trails-toggle a,
+.leaflet-touch .area-picker__trails-toggle a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background-color: #fff;
+  color: var(--color-trail-green);
+}
+
+// Selector targets the `a` itself, not a `.foo a` descendant combinator —
+// `toggleTrails()` in area-picker.ts toggles this class directly on the
+// anchor element, not on a wrapping container. Caught live: the previous
+// `.area-picker__trails-toggle--active a` selector silently never matched,
+// so the active/inactive visual states were identical (confirmed via
+// `getComputedStyle` showing the same color before and after a click).
+//
+// Second live-caught issue, same fix session: even after correcting the
+// selector shape above, `.leaflet-touch .area-picker__trails-toggle a`
+// (2 classes, specificity 0,2,1) still out-ranked a plain
+// `a.area-picker__trails-toggle--active` (1 class, 0,1,1) in this
+// touch-flagged environment — the exact same ancestor-specificity trap
+// documented above for the base rules, just hit again for the active
+// state. Matched explicitly for both the touch and non-touch base rules.
+.area-picker__trails-toggle a.area-picker__trails-toggle--active,
+.leaflet-touch .area-picker__trails-toggle a.area-picker__trails-toggle--active {
+  background-color: var(--color-trail-green);
+  color: #fff;
+}
+
+.area-picker__trails-legend {
+  background-color: #fff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.6rem;
+  font-size: 0.75rem;
+  box-shadow: none;
+  border: 1px solid var(--bs-border-color);
+}
+
+// Lifts it clear of Leaflet's own attribution strip at the true bottom edge
+// — verified live that without this, the two visually overlapped.
+.leaflet-bottom .area-picker__trails-legend {
+  margin-bottom: 1.75rem;
+}

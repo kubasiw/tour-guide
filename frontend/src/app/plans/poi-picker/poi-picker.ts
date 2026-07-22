@@ -43,7 +43,9 @@ export class PoiPicker {
 
   protected readonly orderedItems = signal<PlanItemWithPoi[]>([]);
 
-  protected readonly viewMode = signal<'grid' | 'map' | 'split'>('grid');
+  // 'split' is the default per user request (2026-07-22) — the linked list+map view is more
+  // useful out of the box than a plain grid, now that hover-sync between the two exists.
+  protected readonly viewMode = signal<'grid' | 'map' | 'split'>('split');
 
   protected readonly hoveredPoiId = signal<string | null>(null);
 

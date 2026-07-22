@@ -69,12 +69,18 @@ export class AreaPicker {
   protected readonly area = signal<Area | null>(null);
   protected readonly confirming = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
+  // On by default per user request (2026-07-22) — trails are useful enough on first
+  // view that requiring an extra click no longer earns its keep now that the toggle
+  // itself is easy to find (see addTrailsToggleControl's own positioning note).
+  protected readonly trailsVisible = signal(true);
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
   private readonly mapSignal = signal<L.Map | undefined>(undefined);
   private drawnItems?: L.FeatureGroup;
   private hasDrawnExisting = false;
+  private trailsLayer?: L.TileLayer;
+  private trailsLegendControl?: L.Control;
 
   public constructor() {
     afterNextRender(() => this.initMap());
@@ -195,6 +201,13 @@ export class AreaPicker {
       });
     });
 
+    this.trailsLayer = L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', {
+      attribution:
+        '<a href="https://waymarkedtrails.org">Waymarked Trails</a>, CC-BY-SA OpenStreetMap contributors',
+      maxZoom: 18,
+    });
+    this.addTrailsToggleControl(map);
+
     const handleResize = (): void => {
       map.invalidateSize();
     };
@@ -203,6 +216,92 @@ export class AreaPicker {
 
     this.drawnItems = drawnItems;
     this.mapSignal.set(map);
+  }
+
+  // Waymarked Trails' hiking tiles are transparent line overlays meant to sit
+  // on top of a normal base map (confirmed via a live fetch — a real PNG,
+  // same free/no-key family as Overpass/Nominatim/Open-Meteo). On by default
+  // (per user request, 2026-07-22) now that the toggle itself is easy to
+  // find — still fully toggleable off for anyone who finds it distracting.
+  private addTrailsToggleControl(map: L.Map): void {
+    // 'topleft' — user feedback (2026-07-22): a 'bottomright' toggle was
+    // easy to miss entirely, had to be hunted for. Moved next to the map's
+    // own functional controls (zoom + draw toolbar), where users already
+    // look for map features — Leaflet auto-stacks separate `L.Control`
+    // instances added to the same corner (each gets its own 10px
+    // `margin-top`, confirmed by reading leaflet.css directly), so this
+    // simply appends below the draw toolbar with the same natural gap that
+    // already separates the zoom control from the draw toolbar above it —
+    // no manual positioning/collision math needed. Verified live (not
+    // assumed) that this does NOT collide with `.area-picker__search`'s
+    // floating pill at mobile widths: the toolbar stack (zoom + draw)
+    // already extends to ~y:349, well below the search pill's ~y:157
+    // bottom edge, so anything appended after it starts already clear.
+    const toggleControl = new L.Control({ position: 'topleft' });
+
+    toggleControl.onAdd = (): HTMLElement => {
+      const container = L.DomUtil.create('div', 'leaflet-bar area-picker__trails-toggle');
+      const button = L.DomUtil.create('a', '', container);
+      button.href = '#';
+      button.setAttribute('role', 'button');
+      button.setAttribute('aria-label', 'Przełącz warstwę szlaków turystycznych');
+      button.title = 'Szlaki turystyczne (Waymarked Trails)';
+      button.innerHTML = '<i class="bi bi-signpost-2-fill"></i>';
+
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.on(button, 'click', (event: Event) => {
+        event.preventDefault();
+        this.toggleTrails(map, button);
+      });
+
+      // Reflects the default-on initial state (`trailsVisible` starts `true`)
+      // — reuses the same apply-state logic the click handler uses, so the
+      // layer/legend/active-class are never set in only one of the two
+      // places this state can change.
+      this.applyTrailsVisibility(map, button, this.trailsVisible());
+
+      return container;
+    };
+
+    toggleControl.addTo(map);
+  }
+
+  private toggleTrails(map: L.Map, button: HTMLElement): void {
+    const visible = !this.trailsVisible();
+    this.trailsVisible.set(visible);
+    this.applyTrailsVisibility(map, button, visible);
+  }
+
+  private applyTrailsVisibility(map: L.Map, button: HTMLElement, visible: boolean): void {
+    button.classList.toggle('area-picker__trails-toggle--active', visible);
+
+    if (visible) {
+      this.trailsLayer?.addTo(map);
+      this.addTrailsLegend(map);
+    } else {
+      if (this.trailsLayer) {
+        map.removeLayer(this.trailsLayer);
+      }
+      this.trailsLegendControl?.remove();
+      this.trailsLegendControl = undefined;
+    }
+  }
+
+  private addTrailsLegend(map: L.Map): void {
+    // 'bottomleft' — same reasoning as the toggle button above; this corner
+    // has no pre-existing control at all, so no stacking/collision concern.
+    const legendControl = new L.Control({ position: 'bottomleft' });
+
+    legendControl.onAdd = (): HTMLElement => {
+      const container = L.DomUtil.create('div', 'area-picker__trails-legend');
+      container.innerHTML =
+        'Szlaki: <a href="https://waymarkedtrails.org" target="_blank" rel="noopener">Waymarked Trails</a>';
+      L.DomEvent.disableClickPropagation(container);
+      return container;
+    };
+
+    legendControl.addTo(map);
+    this.trailsLegendControl = legendControl;
   }
 
   private drawExistingArea(map: L.Map, area: Area): void {

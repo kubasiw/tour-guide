@@ -48,7 +48,9 @@
 
 // Floating search overlay — centered pill sitting on top of the map,
 // deliberately narrow so it doesn't collide with Leaflet's own top-left
-// zoom control or top-right draw toolbar.
+// zoom control + draw toolbar (both actually live in that one corner,
+// confirmed live — not split top-left/top-right as an earlier comment here
+// assumed).
 .area-picker__search {
   position: absolute;
   top: 1rem;
@@ -72,3 +74,9 @@
   z-index: 1000;
   border-radius: v.$border-radius;
 }
+
+// Waymarked Trails overlay toggle + legend styling lives in the global
+// `_leaflet-overrides.scss` instead, not here — see that file's own comment
+// for why (imperatively-created `L.DomUtil.create(...)` elements never get
+// Angular's view-encapsulation attribute, so component-scoped rules here
+// would silently never match them).

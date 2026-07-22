@@ -74,6 +74,89 @@ is complete; work now moves to "Beyond MVP" below.
    Leaflet map**, not a map replacement (same `L.tileLayer`-style integration already used for the
    OSM base tiles), plus their own separate query API for trail search. No reason to swap away from
    Leaflet/OSM for this.
+   **✅ Built (2026-07-22), first slice — tile overlay + toggle on `area-picker`:** before
+   implementing, walked through 4 options with the user from safe to fancy (raster tile overlay only;
+   + a toggle/legend; a dedicated trail-search typeahead; full vector trail geometry rendered as
+   real `L.polyline`s clickable into `PlanItem`s) — **confirmed via live curl that the tile endpoint
+   works** (`https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png` returns real transparent PNG
+   tiles, 200 OK) but explicitly flagged that the vector/GeoJSON API's shape was *not* verified
+   (guessed endpoints 404'd) — user chose to start safely with **options 1+2 only** (tile overlay +
+   toggle button + legend chip), leaving vector geometry/search for a later pass if this proves
+   useful. `AreaPicker` gained `trailsLayer` (`L.tileLayer(...)`, attribution `"Waymarked Trails,
+   CC-BY-SA OpenStreetMap contributors"`, per their own attribution requirement), off by default
+   (same "don't clutter the map unasked" precedent as `PoiMap`'s marker clustering non-decision) and
+   toggled via a custom `L.Control` icon button (`bi-signpost-2-fill`, trail-green `--active` state
+   when on) plus a small legend chip crediting Waymarked Trails, both built the same way as any custom
+   Leaflet control in this app (`new L.Control({...})` with a plain `.onAdd` function, not the
+   classical `L.Control.extend()` pattern — avoids classical-inheritance TS typing friction).
+   **Two gotchas hit, worth generalizing for any future custom `L.Control` in this app:**
+   (1) **imperative DOM bypasses Angular's view encapsulation** — `L.DomUtil.create(...)` builds
+   these elements directly in TypeScript, entirely outside Angular's template compiler, so they
+   never receive the `_ngcontent-*` attribute Emulated encapsulation uses to scope component
+   styles. Rules written in `area-picker.scss` were syntactically valid but silently matched
+   nothing at runtime (confirmed via `getComputedStyle` showing Leaflet's own defaults still
+   winning) — fixed by moving them to the global `_leaflet-overrides.scss` partial instead (already
+   the established home for unscoped Leaflet CSS, just not previously spelled out this explicitly).
+   (2) **Leaflet's own CSS has ancestor-scoped selectors that beat flat single-class overrides
+   regardless of source order** — confirmed by reading `node_modules/leaflet/dist/leaflet.css`
+   directly: `.leaflet-touch .leaflet-bar a` and `.leaflet-bottom .leaflet-control` are both
+   2-class-specificity rules that out-rank a plain `.area-picker__trails-toggle a` /
+   `.area-picker__trails-legend` selector. Fixed by matching Leaflet's own ancestor-class shape
+   explicitly (`.leaflet-touch .area-picker__trails-toggle a`, `.leaflet-bottom
+   .area-picker__trails-legend`) — same underlying fix already used once for the zoom-control
+   44px bump, just not previously generalized as a rule until this feature hit it again for a new
+   control. **Positioning (original): `bottomright` (toggle) / `bottomleft` (legend)** — originally
+   guessed `topright`/`topleft` from memory (a real slip against this project's own "verify, don't
+   assume" principle), corrected after live DOM inspection showed leaflet-draw's toolbar actually
+   lives at `.leaflet-top.leaflet-left` alongside the zoom control, and either top corner also
+   collided with `.area-picker__search`'s floating pill at mobile widths (confirmed via overlapping
+   `getBoundingClientRect()` measurements). Verified end-to-end via `getComputedStyle`/
+   `getBoundingClientRect`/`elementFromPoint` (44px touch targets, legend's `margin-bottom` clearing
+   Leaflet's attribution bar, nothing covering the legend's center point) plus a real screenshot
+   showing the trail overlay rendering correctly over a live Kraków view, at both mobile (375px, no
+   horizontal overflow) and desktop width.
+   **Repositioned to `topleft` (2026-07-22), real user feedback:** a `bottomright` toggle was too
+   easy to miss — had to be hunted for on first use. Moved to `topleft` instead, next to the map's
+   own functional controls (zoom + draw toolbar), where users already look for map features.
+   Leaflet auto-stacks separate `L.Control` instances added to the same corner (each gets its own
+   `margin-top: 10px`, confirmed by reading `leaflet.css` directly) — the toggle simply appends
+   below the draw toolbar with the same natural gap already separating the zoom control from the
+   draw toolbar, no manual position math needed. Re-verified live (not assumed) that this doesn't
+   collide with the search pill either: the zoom+draw stack already extends to ~y:349 at mobile
+   width, well clear of the search pill's ~y:157 bottom edge, so anything appended after it starts
+   already clear — confirmed via `getBoundingClientRect()` (`overlaps: false`) at both mobile and
+   desktop width, with zero horizontal page overflow at either. Icon color also changed to
+   trail-green even at rest (was the plain ink/gray of the zoom/draw glyphs) — a second, smaller
+   discoverability cue so the button visually differs from its monochrome neighbors, not just its
+   position.
+   **Bug caught and fixed in the same pass: the active/inactive toggle states were visually
+   identical.** `toggleTrails()` (`area-picker.ts`) adds the `--active` class directly to the `<a>`
+   button, not to a wrapping container — but the original CSS rule
+   (`.area-picker__trails-toggle--active a`) was a descendant-combinator selector expecting that
+   class on an *ancestor*, so it silently never matched (confirmed via `getComputedStyle` showing
+   identical color/background before and after a click, in both the original and the just-fixed
+   selector shape). Fixing the selector shape alone still didn't work: `.leaflet-touch
+   .area-picker__trails-toggle a` (2-class specificity) out-ranked a plain
+   `a.area-picker__trails-toggle--active` (1-class) — the *exact same* ancestor-specificity trap as
+   gotcha (2) above, just hit again for an active-state override instead of a base rule. Fixed by
+   matching that specificity explicitly for both the touch and non-touch base rules
+   (`.area-picker__trails-toggle a.area-picker__trails-toggle--active`, `.leaflet-touch
+   .area-picker__trails-toggle a.area-picker__trails-toggle--active`). Verified end-to-end via
+   `getComputedStyle` across three clicks (rest → active → rest): background/color genuinely swap
+   (white+green → green+white → white+green), confirmed at both mobile and desktop width.
+   **Generalized lesson for any future toggleable custom `L.Control` in this app:** a state-modifier
+   class needs its own specificity math checked against Leaflet's ancestor-scoped base rules just
+   like the base selector does — getting the descendant-vs-same-element selector shape right isn't
+   sufficient on its own if the fix still loses the specificity race.
+   **On by default (2026-07-22), user request:** `trailsVisible` now starts `true` instead of
+   `false` — now that the toggle is easy to find and visually distinct, the extra click to turn
+   trails on no longer earns its keep. `addTrailsToggleControl`'s `onAdd` calls the same
+   `applyTrailsVisibility(map, button, visible)` helper the click handler uses (extracted from the
+   former `toggleTrails` body) to apply this initial state — layer, legend, and active class are
+   now set from exactly one code path regardless of whether the state changes at init or via a
+   click, rather than duplicating that logic. Still fully toggleable off. Verified live: on a fresh
+   page load the toggle renders already active (solid green), the Waymarked Trails tile images are
+   already in the DOM, and the legend chip is already present — no click needed.
 3. ✅ `PlanGeneratorModule` — `GET /plans/:id/candidates` maps the plan's `activities` to
    `PoiType`s (`plan-generator/activity-poi-mapping.ts`), fetches matches via
    `PoiService.findInBoundingBox`, and returns them balanced round-robin across the matched
@@ -562,6 +645,12 @@ is complete; work now moves to "Beyond MVP" below.
     mobile** — hover doesn't exist on touch and a side-by-side split is cramped narrow, but below
     `lg` it just stacks (grid above, map below) via the same responsive columns, which is still a
     perfectly usable view; no extra code to detect/hide it on small screens.
+    **`'split'` made the default view mode (2026-07-22), user request** — `PoiPicker.viewMode`
+    now starts `'split'` instead of `'grid'`, now that the hover-synced list+map exists and is
+    more immediately useful than a plain grid on first load. A one-line default change, no new
+    logic; verified live (a fresh plan load renders both the tile grid and `<app-poi-map>`
+    simultaneously with the split button already showing active) at both mobile (stacks, no
+    horizontal overflow) and desktop (true side-by-side) width.
 11. ✅ **Finalized-plan summary view (2026-07-21)** — a real approval action plus a dedicated
     read-only summary screen. `Plan.status` (existed since Faza 1, always `"draft"`, never read or
     written until now) gets a genuine `'final'` transition: `PlansService.finalize(id)` requires

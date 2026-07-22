@@ -948,7 +948,21 @@ Frontend-specific:
   (not `@use`), so overrides must use plain variable assignment + `@import`, not `@use ... with`.
   Expect (and ignore) Dart Sass's "`@import` rules are deprecated" build warnings until Bootstrap
   migrates its own source — this is a known, ecosystem-wide, currently-unavoidable warning, not a
-  bug in this repo. **Design direction: "Trail journal / mapa turystyczna"** (confirmed 2026-07-21,
+  bug in this repo.
+  **Spacing convention (confirmed 2026-07-22):** don't invent a parallel spacing-token system —
+  Bootstrap 5.3 already ships one as a `$spacers` Sass map (`0, 1=.25rem, 2=.5rem, 3=1rem,
+  4=1.5rem, 5=3rem`), which is exactly the "map-get-based design values" idea, already wired
+  through every `m*-`/`p*-`/`gap-*` utility class. Customize *that* map in `_variables.scss` (same
+  spot `$border-radius`/`$primary` already live, set before the Bootstrap `@import`) if the default
+  steps ever need adjusting app-wide, rather than adding a second, competing token file. Default to
+  reaching for the existing utility classes (`mt-3`, `ps-2`, `gap-2`, ...) directly in templates for
+  anything that fits the scale; reserve component `.scss` for genuinely bespoke values that aren't
+  spacing at all (e.g. the datepicker's 2rem day-circle, `poi-tile`'s icon size) — same "don't
+  duplicate what already has a variable" rule above, just applied to spacing specifically. A scoped
+  local override (e.g. `trip-details-card`'s `margin-top: 0`, overriding what `panel-card` sets) is
+  fine when a specific layout genuinely needs an exception — that's not a sign the scale itself
+  needs replacing, just that one spot deviates from the shared card pattern on purpose.
+  **Design direction: "Trail journal / mapa turystyczna"** (confirmed 2026-07-21,
   supersedes the earlier "Trail & earth" palette) — a full app-wide redesign pass, prompted by user
   feedback that the growing number of components had started to look generic/thrown-together rather
   than like one coherent app. Full inventory of every view done first (compared against this file's

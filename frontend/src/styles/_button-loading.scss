@@ -1,0 +1,29 @@
+// Prevents a button from changing size when its label is swapped for a
+// loading spinner — a real user complaint (2026-07-22): the label used to be
+// replaced outright by `<app-loader variant="spinner">`, which is much
+// smaller than most button labels, so the button visibly shrank while
+// loading. Fix: the label always stays in the DOM (so it keeps reserving its
+// normal layout space) and is just made invisible (`visibility: hidden`, not
+// removed/`display: none`) while loading; the spinner overlays it via
+// absolute positioning instead of replacing it.
+//
+// Global (not a component `@use`d partial) since every submit/action button
+// across the app (auth forms, area-picker confirm, poi-picker finalize/
+// narration, plan-chat send, ...) needs the identical classes — same
+// one-global-file-for-a-repeated-pattern precedent as `_trail-list.scss`.
+.btn-loading {
+  position: relative;
+}
+
+// Scoped under `.btn-loading` (present on the button only while its loading
+// signal is true) — must NOT be a bare `.btn-loading__label` rule, or the
+// label would be hidden unconditionally in every state, not just loading.
+.btn-loading .btn-loading__label {
+  visibility: hidden;
+}
+
+.btn-loading__spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}

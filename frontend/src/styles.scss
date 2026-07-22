@@ -4,6 +4,7 @@
 @import 'theme-extras';
 @import 'leaflet-overrides';
 @import 'trail-list';
+@import 'button-loading';
 
 // Flex app-shell so a routed view (currently only `area-picker`) can opt into
 // filling the full remaining viewport height for an edge-to-edge map, via

@@ -689,14 +689,14 @@ is complete; work now moves to "Beyond MVP" below.
     map popup has no interactive button → "Edytuj plan" returns to the working view →
     `plan-detail`'s persistent link works on a revisit → zero-item empty state → both mobile and
     desktop width, no horizontal overflow).
-    **Known UI bug, not yet fixed (user-reported 2026-07-21):** in `poi-picker`, the
-    "Zakończ planowanie"/"Zobacz podsumowanie" button and the "Wygeneruj podsumowanie AI" button
-    sit right next to each other with poor visibility (both plain `btn-outline-secondary btn-sm`,
-    blending together) and no spacing between them. Needs a real pass: at minimum a gap (e.g. `gap-2`
-    on their wrapper or a margin utility) and reconsidering whether the finalize action — a more
-    significant, less reversible step than "generate a narration" — should visually stand out more
-    (e.g. `btn-accent`, matching how other primary actions in this app use the accent color rather
-    than the muted outline-secondary style).
+    **Known UI bug — already fixed (confirmed 2026-07-22 while checking on user request):** the
+    `poi-picker` finalize/narration button visibility issue described above is resolved in the
+    current code — their wrapper is `<div class="d-flex flex-wrap gap-2 mb-2">` (real spacing
+    between them) and the finalize button is `btn btn-accent` (visually distinct from the muted
+    `btn-outline-secondary` narration button), not the blended `btn-outline-secondary btn-sm` pair
+    this note originally described. Left unclear exactly which pass fixed it since the note was
+    never marked resolved at the time — worth remembering to update/remove notes like this once
+    addressed, rather than leaving them to look like an open bug indefinitely.
 12. ✅ **Adaptive per-region theming (2026-07-21)** — `AiService.generateAreaDescription` now
     returns `{ description, theme }` from a **single combined Claude call** rather than two (the
     system prompt requires a fixed `THEME: <label>` first line, parsed with a regex; falls back to
@@ -1036,6 +1036,29 @@ Frontend-specific:
   (`frontend/src/app/shared/loader/loader.ts`): `variant="spinner"` for inline/small UI (buttons,
   small checks), `"skeleton"` for lists/cards, `"bar"` for full-view long-running operations (e.g.
   future plan generation).
+  **Button-loading pattern (fixed 2026-07-22, real user complaint):** never swap a button's label
+  for `<app-loader variant="spinner">` outright — every submit/action button in the app used to do
+  this (`@if (loading) { <app-loader variant="spinner" /> } @else { label }`, or for the auth forms,
+  the entire `<button>` replaced by a bare loader), and since the spinner is much smaller than most
+  labels, the button visibly shrank while loading. Fixed globally via a new `.btn-loading` /
+  `.btn-loading__label` / `.btn-loading__spinner` class set in `frontend/src/styles/
+  _button-loading.scss` (imported once in `styles.scss`, same one-global-file-for-a-repeated-
+  pattern precedent as `_trail-list.scss`) — the label stays in the DOM and keeps reserving its
+  normal layout space (`visibility: hidden`, not removed), while the spinner overlays it via
+  `position: absolute; inset: 0` on the button (`position: relative` via `.btn-loading`). Applied
+  to every submit/action button in the app: `<button [class.btn-loading]="loading()" [disabled]="
+  loading()"><span class="btn-loading__label">…label…</span>@if (loading()) { <app-loader
+  variant="spinner" class="btn-loading__spinner" /> }</button>` — the label `<span>` is always
+  rendered, never behind an `@if`/`@else`. Verified via `getBoundingClientRect()` before/during/
+  after toggling the loading signal directly (`window.ng.getComponent(...)`) that button width and
+  height are now identical in all three states, and that the spinner renders centered within the
+  button's bounds. Applies to: `login`, `register`, `forgot-password`, `reset-password`,
+  `change-password` (all previously the "whole button replaced" variant), `area-picker`'s confirm
+  button, `activity-selector`/`trip-details`'s submit buttons, `poi-picker`'s finalize/narration
+  buttons, and `plan-chat`'s send button. Does **not** apply to the full-page/section
+  `<app-loader variant="spinner">` uses (`plan.isLoading()`, `placeName.isLoading()`, etc.) — those
+  aren't inside a button and were never affected by this bug. Follow this same pattern for any new
+  loading button in the app rather than reverting to the old swap-the-label style.
 - `frontend/src/app/core/health.service.ts` + `frontend/src/app/app.ts` are the canonical example
   of this whole pattern end to end (service returns an `Observable`, component wraps it in
   `rxResource()`, template branches on `.isLoading()`/`.error()`/`.value()` and shows `<app-loader>`

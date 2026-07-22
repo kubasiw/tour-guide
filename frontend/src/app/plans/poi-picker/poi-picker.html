@@ -53,13 +53,15 @@
         <button
           type="button"
           class="btn btn-accent"
+          [class.btn-loading]="finalizing()"
           [disabled]="finalizing() || orderedItems().length === 0"
           (click)="finalize()"
         >
-          @if (finalizing()) {
-            <app-loader variant="spinner" />
-          } @else {
+          <span class="btn-loading__label">
             <i class="bi bi-check2-circle me-1"></i>Zakończ planowanie
+          </span>
+          @if (finalizing()) {
+            <app-loader variant="spinner" class="btn-loading__spinner" />
           }
         </button>
       }
@@ -68,13 +70,15 @@
         <button
           type="button"
           class="btn btn-outline-secondary"
+          [class.btn-loading]="narrationLoading()"
           [disabled]="narrationLoading()"
           (click)="generateNarration()"
         >
-          @if (narrationLoading()) {
-            <app-loader variant="spinner" />
-          } @else {
+          <span class="btn-loading__label">
             <i class="bi bi-stars me-1"></i>Wygeneruj podsumowanie AI
+          </span>
+          @if (narrationLoading()) {
+            <app-loader variant="spinner" class="btn-loading__spinner" />
           }
         </button>
       }

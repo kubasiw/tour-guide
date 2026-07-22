@@ -54,11 +54,16 @@
           [disabled]="sending()"
           (keydown.enter)="send()"
         />
-        <button type="button" class="btn btn-accent" [disabled]="sending()" (click)="send()">
+        <button
+          type="button"
+          class="btn btn-accent"
+          [class.btn-loading]="sending()"
+          [disabled]="sending()"
+          (click)="send()"
+        >
+          <span class="btn-loading__label"><i class="bi bi-send"></i></span>
           @if (sending()) {
-            <app-loader variant="spinner" />
-          } @else {
-            <i class="bi bi-send"></i>
+            <app-loader variant="spinner" class="btn-loading__spinner" />
           }
         </button>
       </div>

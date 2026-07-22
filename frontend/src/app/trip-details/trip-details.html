@@ -50,13 +50,18 @@
             </div>
           </div>
 
-          @if (submitting()) {
-            <app-loader variant="spinner" />
-          } @else {
-            <button type="button" class="btn btn-primary" (click)="submit()">
-              Dalej<i class="bi bi-arrow-right ms-1"></i>
-            </button>
-          }
+          <button
+            type="button"
+            class="btn btn-primary"
+            [class.btn-loading]="submitting()"
+            [disabled]="submitting()"
+            (click)="submit()"
+          >
+            <span class="btn-loading__label">Dalej<i class="bi bi-arrow-right ms-1"></i></span>
+            @if (submitting()) {
+              <app-loader variant="spinner" class="btn-loading__spinner" />
+            }
+          </button>
         </div>
       </div>
 

@@ -32,13 +32,13 @@
         <button
           type="button"
           class="btn btn-primary"
+          [class.btn-loading]="submitting()"
           [disabled]="selected().size === 0 || submitting()"
           (click)="submit()"
         >
+          <span class="btn-loading__label">Dalej<i class="bi bi-arrow-right ms-1"></i></span>
           @if (submitting()) {
-            <app-loader variant="spinner" />
-          } @else {
-            Dalej<i class="bi bi-arrow-right ms-1"></i>
+            <app-loader variant="spinner" class="btn-loading__spinner" />
           }
         </button>
       </div>

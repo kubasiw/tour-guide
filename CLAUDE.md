@@ -961,24 +961,25 @@ Frontend-specific:
     routerLink="/">` instead of a plain `<span>`) — "the logo always links home" is one of the
     oldest, most consistently-followed web conventions (documented by Nielsen Norman Group as a
     baseline user expectation for decades).
-  - **Idea captured, not built (2026-07-22): `plan-chat`'s placement in `poi-picker`.** User's own
-    observation: the chat panel currently sits as just another stacked block between the trail-list
-    and the "Miejsca" browsing section, and gets visually lost in that column of cards — asked for a
-    UX-designer take on alternatives, specifically floating chat + floating action button (FAB) in
-    a bottom corner vs. moving it into the same column as the selected-items list.
-    **Recommendation: the floating chat + FAB pattern** (a docked circular button, e.g.
-    bottom-right, that expands into a chat panel) — this is now the dominant pattern for an
-    embedded AI/support assistant (Intercom, Drift, ChatGPT's own embed widget, most SaaS chat
-    widgets) and solves the actual complaint directly: pulling the chat **out of the normal document
-    flow** means it can never get lost between other stacked cards, and it stays reachable
-    regardless of scroll position — which pairs naturally with the sticky-nav idea above, since both
-    are "persistent, floating" UI elements. It also works identically on mobile and desktop with no
-    separate responsive layout needed, unlike a fixed side-rail approach (which is a reasonable
-    alternative on wide desktop viewports but awkward on mobile without its own drawer/toggle).
-    **Scope note:** this is a bigger lift than a quick style tweak — a real overlay/animation/
-    z-index pass, and the existing `itemsChanged` → `items.reload()` wiring needs to keep working
-    regardless of whether the panel is open or collapsed — so treat it as its own dedicated build
-    step, not something to bundle into an unrelated pass.
+  - **✅ `plan-chat` converted to a floating chat + FAB, done (2026-07-22)** (captured same day —
+    user's own observation was that the chat panel sat as just another stacked block between the
+    trail-list and the "Miejsca" browsing section, getting visually lost in that column of cards;
+    asked for a UX-designer take, chose the floating pattern over moving it into the item-list
+    column). `PlanChat` gained an `open = signal(false)`; its template now renders a circular
+    `.plan-chat__fab` button (bottom-right, `position: fixed`, `z-index: 1040` — above the sticky
+    nav's `1020`) that toggles an `@if`-rendered `.plan-chat__panel` card (also `position: fixed`,
+    `max-width: calc(100vw - 2rem)` so it never overflows narrow viewports, `max-height: 70vh`) with
+    its own header (title + a Bootstrap `.btn-close`) plus the pre-existing messages/input markup
+    unchanged. No CDK Overlay or portal needed — plain fixed positioning is enough since the panel
+    doesn't need to escape any `overflow: hidden` ancestor. `poi-picker.html`'s mount point dropped
+    its now-meaningless `class="d-block mb-4"` (a fixed-position element takes no space in normal
+    flow, so those layout classes did nothing). The existing `itemsChanged` → `items.reload()`
+    wiring, `authService.isAuthenticated()` gating, and all chat logic (`send()`, history echo) are
+    completely unchanged — this was purely a template/CSS restructure of an already-working
+    component. **Verified:** open/close via the FAB and the header's close button, a real message
+    round-trip through the floating panel (asked "ile miejsc mam w planie?", got the correct live
+    count back), and no horizontal overflow at 375px mobile width (the panel visibly narrows to fit
+    while staying anchored bottom-right).
 - **Mobile verification**: when checking a UI change in the Browser tool, check it at *both* the
   default desktop-ish size *and* a phone width (`resize_window` with `preset: "mobile"`, or width
   320 for the narrowest common phones) — don't rely on whatever size the pane happened to already

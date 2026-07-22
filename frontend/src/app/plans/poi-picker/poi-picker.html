@@ -94,7 +94,7 @@
   }
 
   @if (authService.isAuthenticated()) {
-    <app-plan-chat [planId]="planId()" (itemsChanged)="items.reload()" class="d-block mb-4" />
+    <app-plan-chat [planId]="planId()" (itemsChanged)="items.reload()" />
   }
 
   <div class="d-flex justify-content-between align-items-center mb-3">

@@ -30,6 +30,7 @@ export class PlanChat {
   private readonly planChatService = inject(PlanChatService);
   private readonly chatInput = viewChild<ElementRef<HTMLInputElement>>('chatInput');
 
+  protected readonly open = signal(false);
   protected readonly messages = signal<ChatMessage[]>([]);
   protected readonly sending = signal(false);
   protected readonly error = signal<string | null>(null);

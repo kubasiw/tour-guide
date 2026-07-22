@@ -928,6 +928,42 @@ Frontend-specific:
     pass.
   - **Adaptive per-region theming** (roadmap step 12, ✅ already built — see that entry above for
     the full design) still applies only to `plan-summary`, never this shared chrome/palette.
+  - **✅ Nav/shell polish, done (2026-07-22)** (captured same day, small enough to build
+    immediately rather than deferred): (a) **sticky nav** — added Bootstrap's own `.sticky-top`
+    utility class to the `<nav>` (`position: sticky; top: 0; z-index: 1020`, no custom CSS needed);
+    near-universal practice now across modern web apps (Gmail, Notion, Linear, GitHub all do this).
+    Kept flat per this app's "no decorative shadows" rule — the existing `bg-body-tertiary` vs.
+    `$body-bg` contrast is enough separation once pinned, no shadow added.
+    **Verification gotcha:** the Browser tool's `computer` screenshot action rendered the scrolled
+    page incorrectly here (nav appeared to scroll away with the content instead of staying pinned) —
+    a real instance of this environment's previously-documented screenshot flakiness, not an actual
+    bug. Confirmed the *real* behavior instead via `document.elementFromPoint(x, 20)` after
+    `window.scrollTo` in a separate tool call (letting the scroll actually flush before reading) —
+    the element rendered at the top of the viewport was still inside `<nav>` at `scrollY` > 500,
+    proving sticky positioning genuinely works. Trust `elementFromPoint`/`getBoundingClientRect`
+    over a screenshot when the two disagree on anything scroll-position-related in this
+    environment. (b) **the "Tourist App" brand/icon in the nav is now a link to `/`** (`<a
+    routerLink="/">` instead of a plain `<span>`) — "the logo always links home" is one of the
+    oldest, most consistently-followed web conventions (documented by Nielsen Norman Group as a
+    baseline user expectation for decades).
+  - **Idea captured, not built (2026-07-22): `plan-chat`'s placement in `poi-picker`.** User's own
+    observation: the chat panel currently sits as just another stacked block between the trail-list
+    and the "Miejsca" browsing section, and gets visually lost in that column of cards — asked for a
+    UX-designer take on alternatives, specifically floating chat + floating action button (FAB) in
+    a bottom corner vs. moving it into the same column as the selected-items list.
+    **Recommendation: the floating chat + FAB pattern** (a docked circular button, e.g.
+    bottom-right, that expands into a chat panel) — this is now the dominant pattern for an
+    embedded AI/support assistant (Intercom, Drift, ChatGPT's own embed widget, most SaaS chat
+    widgets) and solves the actual complaint directly: pulling the chat **out of the normal document
+    flow** means it can never get lost between other stacked cards, and it stays reachable
+    regardless of scroll position — which pairs naturally with the sticky-nav idea above, since both
+    are "persistent, floating" UI elements. It also works identically on mobile and desktop with no
+    separate responsive layout needed, unlike a fixed side-rail approach (which is a reasonable
+    alternative on wide desktop viewports but awkward on mobile without its own drawer/toggle).
+    **Scope note:** this is a bigger lift than a quick style tweak — a real overlay/animation/
+    z-index pass, and the existing `itemsChanged` → `items.reload()` wiring needs to keep working
+    regardless of whether the panel is open or collapsed — so treat it as its own dedicated build
+    step, not something to bundle into an unrelated pass.
 - **Mobile verification**: when checking a UI change in the Browser tool, check it at *both* the
   default desktop-ish size *and* a phone width (`resize_window` with `preset: "mobile"`, or width
   320 for the narrowest common phones) — don't rely on whatever size the pane happened to already

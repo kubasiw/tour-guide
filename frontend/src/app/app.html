@@ -1,8 +1,8 @@
-<nav class="navbar navbar-expand bg-body-tertiary">
+<nav class="navbar navbar-expand bg-body-tertiary sticky-top">
   <div class="container justify-content-between">
-    <span class="navbar-brand mb-0 d-flex align-items-center">
+    <a routerLink="/" class="navbar-brand mb-0 d-flex align-items-center">
       <i class="bi bi-backpack-fill me-2"></i>{{ title() }}
-    </span>
+    </a>
     <div>
       @if (authService.isAuthenticated()) {
         <a routerLink="/my-plans" class="btn btn-outline-secondary me-2">Moje plany</a>

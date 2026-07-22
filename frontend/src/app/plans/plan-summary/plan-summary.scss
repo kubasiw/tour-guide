@@ -26,6 +26,19 @@
   border-left: 4px solid var(--theme-color, var(--bs-border-color));
 }
 
+// Bolder second slice (2026-07-22) — user feedback on the first pass (just
+// the border above + this tag) was that it was too subtle to read as "the
+// app changed based on my location". A flat tinted band behind the heading
+// is the actual fix, not new hex values — a solid color-mix tint, no
+// gradient, per this app's "flat surfaces" rule. Falls back to `transparent`
+// (i.e. plain page background) when there's no theme yet — anonymous users
+// or before the AI description has loaded.
+.plan-summary__hero {
+  background-color: color-mix(in srgb, var(--theme-color, transparent) 16%, var(--color-page-bg));
+  border-radius: 0.6rem;
+  padding: 1.25rem 1.5rem;
+}
+
 .plan-summary__theme-tag {
   color: var(--theme-color, var(--bs-secondary));
   font-weight: 600;

@@ -113,6 +113,18 @@ is complete; work now moves to "Beyond MVP" below.
    data — worth a quick real-data check (e.g. a count of non-null `description`/`note` keys inside
    already-cached `Poi.sourceData`) before committing to the OSM-first plan, in case it turns out too
    sparse to be worth shipping on its own.
+   **Real-data check done (2026-07-22), changes the recommendation:** queried all 3692 cached `Poi`
+   rows directly (one-off script, same technique as this project's other DB inspections) —
+   `description`/`note` tags: only **2.6%** (97 rows) have either. `wikipedia`/`wikidata` tags (the
+   *other* free route, for resolving a real Wikipedia extract/photo): only **3.7%** (136 rows). Both
+   free OSM-tag routes are too sparse to be a visible feature on their own — a user browsing the
+   usual `MAX_CANDIDATES = 24` tiles would see a description on 0-1 of them. **The OSM-first plan is
+   no longer the right call** — per-POI AI-generated descriptions, cached forever on `Poi.aiDescription`/
+   `aiDescriptionGeneratedAt` (generated once per POI, reused across every plan/user that later
+   selects that same POI — cost amortizes over time, unlike a per-plan narration), are now the
+   only route to meaningful coverage. Not built yet — still needs its own design pass (e.g. generate
+   lazily on first selection vs. a batch job, and how it interacts with the existing
+   24-tiles-per-render cost concern for tiles that were never AI-described yet).
    **Idea captured, not built (2026-07-20):** a small map preview on every pre-generation screen
    (`activity-selector`, `trip-details`), not just `area-picker` — user's own framing was that this
    could later double as a way to show selected attractions/trails once `PlanItem`s carry real
@@ -630,10 +642,21 @@ is complete; work now moves to "Beyond MVP" below.
     **User feedback (2026-07-21): the four themes are hard to tell apart in practice.** The current
     slice (a border-stripe color + a small icon+label tag) is too subtle to read as a real "the app
     changed based on my location" moment — confirms the "deliberately small first slice" framing
-    above was *too* small, not just appropriately minimal. Revisit with a bolder visual treatment
-    (e.g. a themed hero banner/background tint behind the info card, not just a 4px border) next
-    time this area gets touched — don't just retune the four hex values, the *mechanism* (one thin
-    border) is likely the real limit, not the color choices.
+    above was *too* small, not just appropriately minimal.
+    **✅ Fixed (2026-07-22): themed hero band.** Wrapped the heading + theme tag in a new
+    `.plan-summary__hero` box with a flat tinted background — `color-mix(in srgb, var(--theme-color,
+    transparent) 16%, var(--color-page-bg))` — instead of retuning the four hex values (confirmed via
+    the earlier note that the *mechanism*, not the colors, was the real limit). No gradient, stays
+    flat per this app's own surface rule; falls back to a barely-there alpha tint of the plain page
+    background when there's no theme yet (anonymous users, or before the AI description loads).
+    Kept the existing `.plan-summary__info-card` left border too — the hero is the primary "this is
+    themed" signal, the border is a secondary consistent touch, no reason to remove a working detail.
+    **Verified:** temporarily swapped the live container's theme class in the browser (`theme-coastal`
+    → `theme-mountain-trail` → `theme-urban` → `theme-countryside` → `theme-default`) and confirmed
+    via `getComputedStyle` that the hero's background color is genuinely distinct for all four real
+    themes (not just the 4px border from before) and cleanly falls back for the untheme'd default
+    case; real classification re-checked live too (a Kraków-Stare-Miasto plan → `urban`/"Miasto").
+    No horizontal overflow at 375px.
 13. **Harden auth: password confirmation + forgot/change password** (captured 2026-07-21, prompted
     by a real incident — forgot a password with no recovery path, had to manually delete the
     account from the dev DB to register again). Today's `auth/` (Faza 1 step 2) is deliberately

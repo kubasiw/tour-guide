@@ -4,13 +4,15 @@
   } @else if (plan.error()) {
     <p><i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>Plan not found.</p>
   } @else if (plan.value(); as value) {
-    <h1 class="h3 mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Podsumowanie planu</h1>
+    <div class="plan-summary__hero mb-3">
+      <h1 class="h3 mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Podsumowanie planu</h1>
 
-    @if (aiDescription.value(); as desc) {
-      <p class="mb-3 plan-summary__theme-tag">
-        <i class="bi {{ areaThemeIcons[desc.theme] }} me-1"></i>{{ areaThemeLabels[desc.theme] }}
-      </p>
-    }
+      @if (aiDescription.value(); as desc) {
+        <p class="mb-0 plan-summary__theme-tag">
+          <i class="bi {{ areaThemeIcons[desc.theme] }} me-1"></i>{{ areaThemeLabels[desc.theme] }}
+        </p>
+      }
+    </div>
 
     <div class="row g-3 mb-3">
       <div class="col-12 col-lg-6">

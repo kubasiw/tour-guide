@@ -439,14 +439,29 @@ is complete; work now moves to "Beyond MVP" below.
     whole component is freshly created each time). **Accepted limitation, not built:** marker
     clustering — candidates can render as visually overlapping dots when close together; fine for a
     first pass at `MAX_CANDIDATES = 24`, revisit if it becomes a real usability problem.
-    **Known bug, not yet fixed (user-reported 2026-07-21):** clicking a POI marker's popup shows a
-    "Dodaj do planu"/"Usuń z planu" action button, but the popup closes as soon as the cursor
-    leaves the marker — before the button can actually be clicked, making the popup's own action
-    effectively unusable on desktop. Not yet root-caused (candidate suspects: the marker's
-    `mouseout` handler, or Leaflet's own popup-autoclose/map-click interaction — needs live
-    in-browser investigation, not guessed from reading the code). Revisit before relying on the
-    map's popup as a real add/remove affordance; the tile grid's toggle button is unaffected and
-    remains the reliable way to add/remove a POI in the meantime.
+    **✅ Fixed (2026-07-22), root-caused via live in-browser investigation (user-reported
+    2026-07-21):** the popup closing on mouseout wasn't Leaflet's own autoclose or the marker's
+    `mouseout` handler directly — it was `renderMarkers()` (the method the `pois()`/
+    `selectedPoiIds()` effect calls) reading `this.hoveredPoiId()` on its own (to compute each new
+    marker's initial hover style). Because that read happened *synchronously inside* the effect's
+    execution, Angular's `effect()` tracked it too — Angular tracks every signal read during an
+    effect's run, even ones nested inside a called method, not just reads at the effect's own top
+    level. So *every* hover change (mouseover **and** mouseout) was also re-triggering the
+    "rebuild on pois/selection change" effect: a full marker-layer teardown + recreate, plus that
+    method's own `map.fitBounds()` call re-animating the whole map — on every single hover.
+    Confirmed via a `MutationObserver` on the map container (counted `<path>` marker elements being
+    removed and recreated on each mouseover/mouseout, one full rebuild per hover transition) before
+    touching any code — the popup itself turned out to survive the marker swap immediately, but
+    closed shortly after, consistent with the disruption from the constant rebuild/re-fit. Fixed by
+    wrapping that one read in `untracked(() => this.hoveredPoiId())` so the rebuild effect no
+    longer depends on hover state at all — the existing dedicated hover effect below it already
+    handles per-marker hover restyling without any rebuild, exactly as originally intended.
+    **Verified:** the same `MutationObserver` check now shows zero marker removals across
+    mouseover/click/mouseout, the popup survives 2+ seconds after mouseout, and clicking its
+    "Dodaj do planu" button now actually persists a new `PlanItem` (confirmed via a follow-up
+    `GET .../items`). **Worth remembering for any future `effect()` in this app:** a signal read
+    inside a *private method the effect calls*, not just one read directly in the effect's own
+    callback body, still creates a reactive dependency — an easy way to accidentally over-track.
     **Follow-up (2026-07-21), also done: split view with live hover sync.** Third `viewMode`
     (`'split'`, `bi-layout-split` icon) — half tile grid, half map (`row`/`col-12 col-lg-6` ×2, same
     stacking-below-`lg` precedent as `plan-detail.html`'s info/weather layout), hovering either side

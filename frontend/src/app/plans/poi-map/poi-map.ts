@@ -8,6 +8,7 @@ import {
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import * as L from 'leaflet';
@@ -101,7 +102,20 @@ export class PoiMap {
     this.markersLayer?.remove();
     this.markersByPoiId.clear();
     const layer = L.layerGroup();
-    const hoveredId = this.hoveredPoiId();
+    // Read without tracking — this method runs synchronously inside the
+    // pois()/selectedPoiIds() effect below, and Angular's effect() tracks
+    // *any* signal read during its execution, even ones nested in a called
+    // method. Without `untracked()`, that effect would also start firing on
+    // every hover change (this method's caller), triggering a full marker
+    // teardown/rebuild (plus this method's own `map.fitBounds()` call
+    // re-animating the whole map) on every mouseover/mouseout — which is
+    // exactly what was breaking the popup: it stayed open, but the constant
+    // rebuild + view re-fit around it eventually closed it before a click on
+    // its action button could land. The dedicated hover effect further below
+    // already handles restyling the hovered marker; this initial value only
+    // matters for a *genuine* rebuild (pois/selection changed while a marker
+    // happened to be hovered).
+    const hoveredId = untracked(() => this.hoveredPoiId());
 
     for (const poi of pois) {
       const selected = selectedIds.has(poi.id);

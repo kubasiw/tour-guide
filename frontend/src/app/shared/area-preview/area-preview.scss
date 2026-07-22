@@ -1,7 +1,22 @@
 @use 'variables' as v;
 
+// Fills whatever height its parent column stretches to (e.g. matching a
+// sibling card in a `row` with default `align-items-stretch`), instead of a
+// fixed height that leaves dead space when the sibling is taller.
+:host {
+  display: block;
+  height: 100%;
+}
+
+.area-preview {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .area-preview__map {
-  height: 220px;
+  flex: 1;
+  min-height: 220px;
   width: 100%;
   border-radius: v.$border-radius;
   overflow: hidden;

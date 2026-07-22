@@ -217,29 +217,53 @@ is complete; work now moves to "Beyond MVP" below.
    quirk that can't be fully harmonized via CSS), and asking whether to just patch the spacing or
    finally do the date-range picker already captured above. **Confirmed via `AskUserQuestion`: do
    the real picker, not a spacing patch** — the native-input inconsistency was a symptom, not the
-   root problem. **Deviates from the originally-recommended approach above in one way**: instead of
-   `NgbDatepicker`'s single-calendar dual-highlight range recipe (a custom `dayTemplate` tracking
-   hovered/from/to dates), used **two independent `NgbInputDatepicker` fields** ("Data przyjazdu" /
-   "Data wyjazdu", each a `form-control` + calendar-toggle button in an `input-group`) — much less
-   code (no custom day template/range-highlight CSS), still fully solves the actual complaint (real
-   calendar picking, no native OS chrome, consistent styling between the two fields), and still
-   reads as a genuine date-range picker to the user. Confirmed via reading the installed
-   `@ng-bootstrap/ng-bootstrap@21.0.0` type defs directly (not assumed from memory) that
-   `NgbInputDatepicker`/`NgbDate`/`NgbDateStruct`/`NgbCalendar` are all re-exported from the main
-   package barrel (`export * from '.../datepicker'`), same import style already used for
-   `NgbAlert`/`NgbTypeahead` elsewhere. A group-level `dateRangeValidator` (same shape as the
-   existing `passwordsMatchValidator` precedent) blocks submit if departure isn't after arrival.
-   **`Plan.startDate`/`durationDays` stayed exactly as planned** — `TripDetails.submit()` converts
-   the two picked `NgbDate`s to an ISO date string + a day-count (`NgbCalendar.getNext(start, 'd',
-   n)` / manual UTC-day-difference math) purely client-side; zero backend/DTO changes. Also bundled
-   in the same pass: the `shared/area-preview/` component (see step 3's note above) is now wired
-   into both `activity-selector` and `trip-details` via a `row g-4` / `col-lg-7`+`col-lg-5` layout.
-   **Verified:** browser walkthrough confirmed the form correctly seeds both dates from an existing
-   `Plan` (`startDate` + `durationDays` → arrival + computed departure), the calendar popup opens
-   and a real date click updates the bound field, and submitting persists the correct
-   `startDate`/`durationDays` back to the API (checked via a direct `fetch` against `GET
-   /plans/:id` post-submit) — not just that the UI looks right. No horizontal overflow at 375px on
-   either screen.
+   root problem.
+   **First pass used two independent `NgbInputDatepicker` fields** (arrival/departure as separate
+   inputs) as a simpler alternative to `NgbDatepicker`'s single-calendar range recipe — **but the
+   user asked for the real thing**: one input, one calendar, click-click to select a range, same
+   as ng-bootstrap's own documented pattern. Rebuilt around that: a single `<input readonly
+   ngbDatepicker [autoClose]="false" [dayTemplate]="dayTemplate">` whose displayed value is a
+   formatted `"yyyy-mm-dd  →  yyyy-mm-dd"` string computed from two component signals
+   (`fromDate`/`toDate`, both `NgbDate | null`) — **not** Reactive-Forms-bound (no `formControlName`
+   on this input at all), since the two-click range state machine doesn't map onto a single
+   `ControlValueAccessor` value the way one plain date would. Same "one transient field doesn't
+   need Reactive Forms" precedent as `area-picker`'s search box — confirmed this scales to a
+   stateful multi-step widget too, not just a single debounced input. `onDateSelect(date,
+   datepicker)` is the actual state machine: first click sets `fromDate` (clears `toDate`,
+   calendar stays open — `autoClose="false"` is required for this, the default would close after
+   one click); second click either sets `toDate` and calls `datepicker.close()` if after
+   `fromDate`, or restarts the range if not. A custom `#dayTemplate` (verified `DayTemplateContext`
+   shape — `$implicit`/`date`/`focused`/`selected` — by reading the installed
+   `@ng-bootstrap/ng-bootstrap@21.0.0` type defs directly) renders each day with
+   `isFrom`/`isTo`/`isInRange` classes (trail-green solid for the two endpoints, a light
+   `--color-trail-green-bg` tint for days between — `isInRange` falls back to `hoveredDate` when
+   `toDate` isn't picked yet, previewing the range as the user moves the mouse before the second
+   click). **`Plan.startDate`/`durationDays` stayed exactly as planned** — `submit()` converts the
+   two `NgbDate`s to an ISO date string + a day-count (`NgbCalendar.getNext`/manual UTC-day-diff
+   math) purely client-side; zero backend/DTO changes either way.
+   **Also fixed in the same pass: box-height mismatch.** The user noticed the form card and the
+   `area-preview` map box next to it had visibly different heights. Fixed with `row
+   align-items-stretch` (Bootstrap already stretches columns to equal height, but the *card inside*
+   the column also needs `h-100` to actually fill it) plus `d-flex flex-column
+   justify-content-center` on `.trip-details-card` so the now-much-shorter form (one input instead
+   of two) centers vertically in the stretched space instead of leaving empty space pinned below
+   it. Also dropped the card's inherited `max-width: 420px` (from the shared `panel-card` mixin) via
+   a local `max-width: none` override — `trip-details` is the one `panel-card` user that's paired
+   side-by-side with another box, so it should fill its column width like `area-preview` does,
+   unlike the auth screens which stay intentionally narrow and centered.
+   Also bundled in the same overall pass: the `shared/area-preview/` component (see step 3's note
+   above) is wired into both `activity-selector` and `trip-details` via a `row g-4` /
+   `col-lg-7`+`col-lg-5` layout.
+   **Verified:** confirmed via `window.ng.getComponent()` (synthetic clicks on ng-bootstrap's
+   calendar grid are unreliable in this automated browser environment, same documented class of
+   issue as Leaflet vertex-drag/`NgbTypeahead` selection — worked around by calling `.click()`
+   directly on the day-cell DOM nodes instead of coordinate-based clicks) that: a date before
+   `minDate` (today) is correctly `aria-disabled`; a first click sets `fromDate` and leaves the
+   calendar open with no `toDate` yet; a second click after it sets `toDate` and closes the
+   calendar; submitting persists the correct `startDate`/`durationDays` (checked via a direct
+   `fetch` against `GET /plans/:id` post-submit, e.g. July 28 → July 31 saved as `startDate:
+   "2026-07-28"`, `durationDays: 3`). Box heights confirmed equal via `getBoundingClientRect()`
+   (294.4px both) after the fix. No horizontal overflow at 375px on either screen.
 6. ✅ **`my-plans/`** (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, split out from "plan editing" below since the two don't depend on each
    other (reorder needs no auth, `my-plans/` needs no reorder) and each is substantial on its own.

@@ -1,19 +1,75 @@
-// Design tokens for this app — "Trail & earth" direction (forest green + warm
-// amber), confirmed 2026-07-19. Don't add new one-off colors/spacing elsewhere;
-// extend the tokens here instead.
+// Design tokens for this app — "Trail journal / mapa turystyczna" direction,
+// confirmed 2026-07-21 (supersedes the earlier "Trail & earth" palette below).
+// Don't add new one-off colors/spacing/fonts in component stylesheets; extend
+// the tokens here instead, and reference the CSS custom properties (not the
+// Sass variables) from component SCSS — the Sass variables below exist only
+// to feed Bootstrap's own compile-time color system.
 
 // Bootstrap variable overrides — must be set *before* `@import "bootstrap"` in
 // styles.scss, since Bootstrap's own Sass uses classic `@import` (shared global
 // scope), not `@use`. See https://getbootstrap.com/docs/5.3/customize/sass/
 $border-radius: 0.6rem;
-$primary: #2f6b4f;
+
+// Trail green — main accent (nature/routes). Also drives $primary so
+// Bootstrap's own primary buttons/links/focus rings pick it up for free.
+$primary: #3b6d11;
+
+// Bootstrap's own `$success` (and everything derived from it — alert-success,
+// text-success, etc.) defaults to a *different* green than our trail green.
+// Left alone, the two greens visibly clash wherever both appear (e.g. a
+// success alert next to a primary button). This app only has one green.
+$success: $primary;
+
+// Warm, muted page background — deliberately not the cream+terracotta
+// pairing (too close to a generic "AI default" look); ties back to the trail
+// green family instead of introducing an unrelated third hue.
+$body-bg: #f6f5ee;
+
+// Ink text tones.
+$body-color: #2c2c2a;
+$body-secondary-color: #5f5e5a;
+
+// Headings use the serif ("old maps and guidebooks" reference); body text
+// stays Bootstrap's own sans stack via Inter (loaded in index.html).
+$headings-font-family: 'Fraunces', serif;
+$headings-font-weight: 600;
+$font-family-sans-serif:
+  'Inter',
+  system-ui,
+  -apple-system,
+  'Segoe UI',
+  Roboto,
+  sans-serif;
 
 // Bumped from Bootstrap's default (.375rem) so buttons/inputs land closer to
 // the ~44px minimum comfortable touch-target size on mobile — verified by
 // measuring actual rendered control heights in the Browser tool, not guessed.
 $input-btn-padding-y: 0.5rem;
 
-// Not a native Bootstrap theme slot — our own warm accent, used sparingly for
-// standout calls to action (see _theme-extras.scss for the utility classes
-// built on top of it).
-$accent: #e0973d;
+// Amber — the one strong accent per screen (e.g. a highlighted selection),
+// used sparingly. Not a native Bootstrap theme slot — see _theme-extras.scss
+// for the utility classes built on top of it.
+$accent: #854f0b;
+
+// Same palette, exposed as real CSS custom properties for component-level
+// SCSS to reference directly (`var(--color-*)`) instead of hardcoding hex
+// values or reaching for the Sass variables above (those are compile-time
+// only and feed Bootstrap's own build, not meant for reuse in component
+// stylesheets).
+:root {
+  --color-trail-green: #3b6d11;
+  --color-trail-green-bg: #eaf3de;
+  --color-amber: #854f0b;
+  --color-amber-bg: #faeeda;
+  --color-ink: #2c2c2a;
+  --color-ink-secondary: #5f5e5a;
+  --color-page-bg: #f6f5ee;
+  --font-heading: 'Fraunces', serif;
+  --font-body:
+    'Inter',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+}

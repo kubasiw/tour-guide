@@ -8,6 +8,7 @@ import { extractErrorMessage } from '../../core/http-error';
 import { POI_TYPE_COLORS, POI_TYPE_ICONS, Poi } from '../../core/poi.model';
 import { Loader } from '../../shared/loader/loader';
 import { PlanItemWithPoi } from '../plan-item.model';
+import { PlanChat } from '../plan-chat/plan-chat';
 import { PlanService } from '../plan.service';
 import { PLAN_STATUS_FINAL } from '../plan-status';
 import { PoiMap } from '../poi-map/poi-map';
@@ -15,7 +16,7 @@ import { PoiTile } from '../poi-tile/poi-tile';
 
 @Component({
   selector: 'app-poi-picker',
-  imports: [PoiTile, Loader, NgbAlert, DragDropModule, PoiMap, RouterLink],
+  imports: [PoiTile, Loader, NgbAlert, DragDropModule, PoiMap, RouterLink, PlanChat],
   templateUrl: './poi-picker.html',
   styleUrl: './poi-picker.scss',
 })

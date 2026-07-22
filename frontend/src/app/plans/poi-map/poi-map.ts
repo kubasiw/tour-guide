@@ -18,6 +18,11 @@ const DEFAULT_ZOOM = 13;
 const MARKER_RADIUS = 8;
 const SELECTED_MARKER_RADIUS = 10;
 const HOVERED_MARKER_RADIUS = 12;
+// Trail green, mirrors --color-trail-green in _variables.scss — Leaflet needs
+// a plain color string here, not a CSS custom property, so the value is
+// intentionally duplicated once (same precedent as this app's other
+// frontend/backend token duplications).
+const SELECTED_MARKER_COLOR = '#3b6d11';
 
 @Component({
   selector: 'app-poi-map',
@@ -126,7 +131,7 @@ export class PoiMap {
   private markerStyle(selected: boolean, hovered: boolean): L.CircleMarkerOptions {
     return {
       radius: hovered ? HOVERED_MARKER_RADIUS : selected ? SELECTED_MARKER_RADIUS : MARKER_RADIUS,
-      color: selected ? '#e0973d' : '#ffffff',
+      color: selected ? SELECTED_MARKER_COLOR : '#ffffff',
       weight: selected ? 3 : 1,
     };
   }

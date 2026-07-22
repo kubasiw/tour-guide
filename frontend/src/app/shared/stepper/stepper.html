@@ -13,7 +13,7 @@
     } @else {
       <span class="stepper__node border text-body-secondary">{{ $index + 1 }}</span>
     }
-    <span class="small" [class.fw-medium]="step.current">{{ step.label }}</span>
+    <span class="small d-none d-sm-inline" [class.fw-medium]="step.current">{{ step.label }}</span>
     @if (!last) {
       <span class="stepper__connector"></span>
     }

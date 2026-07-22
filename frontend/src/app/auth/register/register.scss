@@ -1,5 +1,5 @@
 @use 'mixins' as m;
 
 .auth-form {
-  @include m.narrow-form;
+  @include m.panel-card;
 }

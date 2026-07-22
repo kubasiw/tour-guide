@@ -4,11 +4,10 @@ import { RouterLink, RouterOutlet } from '@angular/router';
 import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from './auth/auth.service';
 import { HealthService } from './core/health.service';
-import { Loader } from './shared/loader/loader';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, Loader, NgbAlert],
+  imports: [RouterOutlet, RouterLink, NgbAlert],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

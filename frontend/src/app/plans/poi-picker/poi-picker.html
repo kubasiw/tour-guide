@@ -10,30 +10,33 @@
   @if (orderedItems().length === 0) {
     <p class="text-body-secondary">Wybierz miejsca poniżej, aby dodać je do planu.</p>
   } @else {
-    <div class="list-group mb-4" cdkDropList (cdkDropListDropped)="onDrop($event)">
-      @for (item of orderedItems(); track item.id) {
-        <div class="list-group-item d-flex align-items-center gap-2" cdkDrag>
-          <i
-            class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary"
-            cdkDragHandle
-          ></i>
-          <span
-            class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
-            [class]="poiTypeColors[item.poi.type]"
-          >
-            <i class="bi {{ poiTypeIcons[item.poi.type] }}"></i>
-          </span>
-          <span class="flex-grow-1 text-truncate">{{ item.poi.name }}</span>
-          <button
-            type="button"
-            class="btn btn-outline-secondary btn-sm flex-shrink-0"
-            (click)="toggle(item.poi)"
-          >
-            <i class="bi bi-x-lg"></i>
-          </button>
-        </div>
+    <ol class="trail-list mb-4" cdkDropList (cdkDropListDropped)="onDrop($event)">
+      @for (item of orderedItems(); track item.id; let i = $index) {
+        <li class="trail-list__item" cdkDrag>
+          <span class="trail-list__marker">{{ i + 1 }}</span>
+          <div class="trail-list__content">
+            <i
+              class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary"
+              cdkDragHandle
+            ></i>
+            <span
+              class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+              [class]="poiTypeColors[item.poi.type]"
+            >
+              <i class="bi {{ poiTypeIcons[item.poi.type] }}"></i>
+            </span>
+            <span class="flex-grow-1 text-truncate">{{ item.poi.name }}</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm flex-shrink-0"
+              (click)="toggle(item.poi)"
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </div>
+        </li>
       }
-    </div>
+    </ol>
 
     @if (finalizeError(); as message) {
       <ngb-alert type="danger" class="small py-2" [dismissible]="false">
@@ -90,13 +93,17 @@
     }
   }
 
+  @if (authService.isAuthenticated()) {
+    <app-plan-chat [planId]="planId()" (itemsChanged)="items.reload()" class="d-block mb-4" />
+  }
+
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="h5 mb-0">Miejsca</h2>
     <div class="btn-group" role="group" aria-label="Widok miejsc">
       <button
         type="button"
         class="btn btn-sm"
-        [class.btn-accent]="viewMode() === 'grid'"
+        [class.btn-primary]="viewMode() === 'grid'"
         [class.btn-outline-secondary]="viewMode() !== 'grid'"
         (click)="viewMode.set('grid')"
       >
@@ -105,7 +112,7 @@
       <button
         type="button"
         class="btn btn-sm"
-        [class.btn-accent]="viewMode() === 'map'"
+        [class.btn-primary]="viewMode() === 'map'"
         [class.btn-outline-secondary]="viewMode() !== 'map'"
         (click)="viewMode.set('map')"
       >
@@ -114,7 +121,7 @@
       <button
         type="button"
         class="btn btn-sm"
-        [class.btn-accent]="viewMode() === 'split'"
+        [class.btn-primary]="viewMode() === 'split'"
         [class.btn-outline-secondary]="viewMode() !== 'split'"
         (click)="viewMode.set('split')"
       >

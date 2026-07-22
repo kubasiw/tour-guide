@@ -3,3 +3,20 @@
 @import 'mixins';
 @import 'theme-extras';
 @import 'leaflet-overrides';
+@import 'trail-list';
+
+// Flex app-shell so a routed view (currently only `area-picker`) can opt into
+// filling the full remaining viewport height for an edge-to-edge map, via
+// `flex: 1` on its own root element. Every other route keeps its natural
+// content height — `main` only stretches to *at least* the viewport, it
+// never clips taller content, so normal page scrolling is unaffected.
+html,
+body {
+  height: 100%;
+}
+
+app-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}

@@ -1,6 +1,6 @@
 <button
   type="button"
-  class="poi-tile card h-100 text-start border-0"
+  class="poi-tile card h-100 text-start"
   [class]="colorClass()"
   [class.poi-tile--selected]="selected()"
   [class.poi-tile--hovered]="hovered()"
@@ -10,7 +10,7 @@
 >
   <div class="card-body p-2 position-relative">
     @if (selected()) {
-      <span class="poi-tile__badge badge bg-accent">
+      <span class="poi-tile__badge badge bg-primary">
         <i class="bi bi-check-lg"></i>
       </span>
     }

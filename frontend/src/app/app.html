@@ -26,19 +26,12 @@
   </div>
 </nav>
 
-<main class="container py-4">
-  @if (health.isLoading()) {
-    <app-loader variant="spinner" />
-  } @else if (health.error()) {
-    <ngb-alert type="danger" [dismissible]="false">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>Backend status: error
+<main class="flex-grow-1 d-flex flex-column">
+  @if (health.error()) {
+    <ngb-alert type="danger" class="rounded-0 mb-0 text-center" [dismissible]="false">
+      <i class="bi bi-exclamation-triangle-fill me-2"></i>Nie można połączyć się z serwerem.
     </ngb-alert>
-  } @else {
-    <p>
-      <i class="bi bi-check-circle-fill text-success me-2"></i>Backend status:
-      {{ health.value()?.status }}
-    </p>
   }
-</main>
 
-<router-outlet />
+  <router-outlet />
+</main>

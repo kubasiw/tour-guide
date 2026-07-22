@@ -10,9 +10,11 @@
   text-decoration: none;
 }
 
+// Dashed, not solid — a small nod to the "trail" motif (a path connecting
+// waypoints) rather than a generic progress-bar segment.
 .stepper__connector {
   flex: 1 1 auto;
-  height: 2px;
   min-width: 1.5rem;
-  background-color: var(--bs-border-color);
+  border-top: 2px dashed var(--color-ink-secondary);
+  opacity: 0.5;
 }

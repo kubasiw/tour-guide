@@ -1,8 +1,74 @@
 @use 'variables' as v;
 
+// Opts this view into the app-shell's flex column (see styles.scss) so the
+// map fills all remaining viewport height below the navbar (and the stepper
+// bar, when present) instead of a fixed pixel height.
+// Gotcha: `<app-area-picker>` (the actual custom element `main` sees as its
+// flex child) defaults to `display: inline` — styling only the inner
+// `.area-picker` div with `flex: 1` does nothing, since that div's parent is
+// the *host* element, which isn't a flex container at all unless told to be
+// one via `:host`. Both need the same flex treatment: the host to correctly
+// participate as `main`'s growing flex item, the inner div to then fill 100%
+// of the host.
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.area-picker {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.area-picker__stepper-bar {
+  padding: 0.75rem 0;
+  background-color: var(--color-trail-green-bg);
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+.area-picker__map-wrap {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 320px;
+}
+
+// `flex: 1` here, not `height: 100%` — percentage heights need an ancestor
+// with a genuinely definite (non-content-derived) height, which a plain
+// flex-grow-sized wrapper doesn't reliably provide; flex-growing this element
+// too sidesteps that resolution question entirely.
 .area-picker__map {
-  height: 500px;
+  flex: 1;
   width: 100%;
+}
+
+// Floating search overlay — centered pill sitting on top of the map,
+// deliberately narrow so it doesn't collide with Leaflet's own top-left
+// zoom control or top-right draw toolbar.
+.area-picker__search {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  width: calc(100% - 2rem);
+  max-width: 420px;
   border-radius: v.$border-radius;
-  overflow: hidden;
+  box-shadow: none;
+}
+
+// Floating confirm/clear card — bottom overlay instead of a full-width block
+// pushed below the map, per the "discreet UI over the map, no heavy panels"
+// direction.
+.area-picker__confirm-card {
+  position: absolute;
+  bottom: 1rem;
+  left: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  border-radius: v.$border-radius;
 }

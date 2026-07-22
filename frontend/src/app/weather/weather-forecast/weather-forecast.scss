@@ -1,5 +1,3 @@
-@use 'variables' as v;
-
 .weather-forecast__day {
   width: 5.5rem;
 }
@@ -8,8 +6,10 @@
   opacity: 0.55;
 }
 
+// Trail green, not amber — every trip day gets this border at once (not a
+// single highlighted item), so it doesn't fit the "one sparing accent" role.
 .weather-forecast__day--highlighted {
-  border: 2px solid v.$accent;
+  border: 2px solid var(--color-trail-green);
 }
 
 .weather-forecast__date,

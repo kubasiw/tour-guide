@@ -12,7 +12,7 @@
         <button
           type="button"
           class="btn"
-          [class.btn-accent]="selected().has(activity.key)"
+          [class.btn-primary]="selected().has(activity.key)"
           [class.btn-outline-secondary]="!selected().has(activity.key)"
           (click)="toggle(activity.key)"
         >

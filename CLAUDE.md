@@ -838,19 +838,72 @@ Frontend-specific:
   (not `@use`), so overrides must use plain variable assignment + `@import`, not `@use ... with`.
   Expect (and ignore) Dart Sass's "`@import` rules are deprecated" build warnings until Bootstrap
   migrates its own source — this is a known, ecosystem-wide, currently-unavoidable warning, not a
-  bug in this repo. **Design direction: "Trail & earth"** (confirmed 2026-07-19) — forest green
-  `$primary` (`#2f6b4f`) + a warm amber `$accent` (`#e0973d`, not a native Bootstrap theme slot; see
-  `_theme-extras.scss` for its `.btn-accent`/`.text-accent`/`.bg-accent` utility classes, built with
-  Bootstrap's own `shade-color()`/`color-contrast()` functions for consistent hover/contrast
-  behavior). App icon/favicon is `bi-backpack-fill` — deliberately generic/universal, not
-  hiking-specific, since it's the default identity across every area type (city, coast, mountains).
-  **Adaptive per-region theming (planned, not built yet):** once the AI plan generator exists, the
-  same AI call that analyzes the area should also classify it into one of a small set of *curated,
-  pre-built* theme presets (e.g. coastal, mountain-trail, urban, countryside) — applied only to the
-  generated `plan-view`, via a wrapper class swapping CSS custom properties, never via AI-generated
-  freeform CSS (that risks broken contrast/dark-mode/component consistency). Default/shared chrome
-  (nav, auth, area-picker, activity-selector, trip-details) always stays on the base "Trail & earth"
-  theme regardless of region. See `PROJECT_BRIEF.md`'s "Integracja AI" for the full note.
+  bug in this repo. **Design direction: "Trail journal / mapa turystyczna"** (confirmed 2026-07-21,
+  supersedes the earlier "Trail & earth" palette) — a full app-wide redesign pass, prompted by user
+  feedback that the growing number of components had started to look generic/thrown-together rather
+  than like one coherent app. Full inventory of every view done first (compared against this file's
+  own architecture/roadmap sections to confirm nothing from the MVP plan was missed), order
+  confirmed with the user before touching any code, then one view-group at a time: foundation →
+  auth (5 screens) → `area-picker` → `activity-selector`/`trip-details`/`stepper` →
+  `plan-detail`/`poi-picker`/`poi-tile`/`poi-map`/`plan-chat` → `plan-summary` →
+  `my-plans`/shared components. Each pass followed the same loop: propose 2-3 sentences on how the
+  direction applies to *that* view specifically (never a 1:1 copy of a mockup), implement, run
+  lint/build/test, verify in the browser at desktop + mobile width, show the result before moving on.
+  - **Palette**: trail green `$primary` (`#3b6d11`) + a muted amber `$accent` (`#854f0b`, still not
+    a native Bootstrap theme slot — same `_theme-extras.scss` utility classes as before, just a new
+    hex). `$body-bg` is a warm, muted off-white (`#f6f5ee`) — deliberately *not* the cream+terracotta
+    pairing (reads as a generic "AI default" look). `$body-color`/`$body-secondary-color` are the
+    ink tones (`#2c2c2a`/`#5f5e5a`). **`$success` is now set to `$primary`** — Bootstrap's default
+    `$success` is a *different* green than our trail green, and left alone the two visibly clashed
+    anywhere both appeared (a success alert next to a primary button, `text-success` icons). The
+    same palette is also exposed as plain CSS custom properties on `:root` in `_variables.scss`
+    (`--color-trail-green`, `--color-amber`, `--color-ink`, `--color-page-bg`, `--font-heading`,
+    `--font-body`, ...) — component SCSS should reference these, not the Sass variables (which only
+    exist to feed Bootstrap's own compile-time build) and never a hardcoded hex.
+  - **Typography**: headings use **Fraunces** (weights 500/600 + italic, loaded via a Google Fonts
+    `<link>` in `index.html`, confirmed actually loading via `document.fonts` in the browser rather
+    than assumed) through `$headings-font-family`/`$headings-font-weight: 600`; body text is
+    **Inter** via `$font-family-sans-serif`. Max two font weights per view, per the confirmed
+    direction — don't add a third without a real reason.
+  - **One accent, used sparingly**: amber (`btn-accent`/`text-accent`/`bg-accent`) is reserved for
+    the single most important action on a screen (e.g. `poi-picker`'s "Zakończ planowanie", a map
+    popup's contextual add/remove button, the stepper's *current* step — always exactly one at a
+    time). Anything that can be selected/highlighted **more than one at once** uses trail green
+    instead (`btn-primary`/`var(--color-trail-green)`) — this was a real bug caught during the pass,
+    not a stylistic nicety: activity multi-select, POI tile selection, the grid/map/split view
+    toggle, every highlighted trip-day in `weather-forecast`, and selected markers on `poi-map` had
+    all been using amber, which meant several amber elements could appear on screen simultaneously.
+    Don't reintroduce `btn-accent`/`$accent` on any multi-select or multi-highlight state.
+  - **Flat surfaces**: no decorative shadows or gradients. `poi-tile`'s hover state used to lift
+    (`translateY`) with a drop shadow — removed in favor of a flat border-color change. The
+    skeleton-loader shimmer in `shared/loader/` is the one exception (a neutral-gray functional
+    loading indicator, not a decorative surface effect) and was left as-is.
+  - **Signature element — the "trail list"**: a dashed vertical line connecting numbered circular
+    waypoints, in a new global partial `frontend/src/styles/_trail-list.scss` (`.trail-list` /
+    `.trail-list__item` / `.trail-list__marker` / `.trail-list__content`, imported once in
+    `styles.scss` — global rather than a component `@use`d partial because both `poi-picker`'s
+    "Twój plan" list and `plan-summary`'s item list need the identical classes). Used **only** where
+    there's a real sequence in time; the browsable POI candidate grid (`poi-tile` cards) stays a
+    plain grid on purpose, per the confirmed rule that numbering shouldn't be decorative.
+  - **`shared/stepper/`** was reskinned as part of this pass too (not deferred) — its connector line
+    is now dashed (`.stepper__connector`, a small nod to the trail motif) instead of solid, using
+    `var(--color-ink-secondary)`.
+  - **New `panel-card` Sass mixin** (`_mixins.scss`, renamed from an earlier `auth-card` once
+    `trip-details` started using it too) — a flat, bordered, centered card for standalone narrow
+    forms (all 5 auth screens, `trip-details`). Its border-radius is a literal `0.6rem` kept in sync
+    by hand with `$border-radius`, since the mixin is `@use`d from each component's own module scope
+    and can't reach that Sass variable without re-importing `variables.scss` a second time (which
+    would double-emit its `:root` custom-property block when mixed with the global `@import` in
+    `styles.scss`).
+  - **Global shell fix**: `app.html`'s `<router-outlet>` was a sibling of `<main>`, not inside it —
+    every routed view individually re-wrapped itself in `container py-4` with no shared page frame.
+    Moved `router-outlet` inside `<main>`. Also removed the permanent "Backend status: ok" line that
+    sat above every single page (Faza-1 scaffolding leftover) — the health check still runs, it just
+    only surfaces as an alert when it actually fails.
+  - App icon/favicon stays `bi-backpack-fill` — deliberately generic/universal, unchanged by this
+    pass.
+  - **Adaptive per-region theming** (roadmap step 12, ✅ already built — see that entry above for
+    the full design) still applies only to `plan-summary`, never this shared chrome/palette.
 - **Mobile verification**: when checking a UI change in the Browser tool, check it at *both* the
   default desktop-ish size *and* a phone width (`resize_window` with `preset: "mobile"`, or width
   320 for the narrowest common phones) — don't rely on whatever size the pane happened to already

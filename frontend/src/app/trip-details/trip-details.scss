@@ -1,5 +1,5 @@
 @use 'mixins' as m;
 
-.narrow-form {
-  @include m.narrow-form;
+.trip-details-card {
+  @include m.panel-card;
 }

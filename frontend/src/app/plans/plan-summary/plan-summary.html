@@ -92,19 +92,22 @@
       } @else {
         <div class="row g-3">
           <div class="col-12 col-lg-6">
-            <div class="list-group mb-4">
-              @for (item of loadedItems; track item.id) {
-                <div class="list-group-item d-flex align-items-center gap-2">
-                  <span
-                    class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
-                    [class]="poiTypeColors[item.poi.type]"
-                  >
-                    <i class="bi {{ poiTypeIcons[item.poi.type] }}"></i>
-                  </span>
-                  <span class="flex-grow-1 text-truncate">{{ item.poi.name }}</span>
-                </div>
+            <ol class="trail-list mb-4">
+              @for (item of loadedItems; track item.id; let i = $index) {
+                <li class="trail-list__item">
+                  <span class="trail-list__marker">{{ i + 1 }}</span>
+                  <div class="trail-list__content">
+                    <span
+                      class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                      [class]="poiTypeColors[item.poi.type]"
+                    >
+                      <i class="bi {{ poiTypeIcons[item.poi.type] }}"></i>
+                    </span>
+                    <span class="flex-grow-1 text-truncate">{{ item.poi.name }}</span>
+                  </div>
+                </li>
               }
-            </div>
+            </ol>
           </div>
           <div class="col-12 col-lg-6">
             <app-poi-map [pois]="pois()" [selectedPoiIds]="selectedPoiIds()" [readonly]="true" />

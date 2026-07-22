@@ -8,12 +8,13 @@ import { extractErrorMessage } from '../core/http-error';
 import { Plan } from '../plans/plan.model';
 import { buildPlanSteps } from '../plans/plan-steps';
 import { PlanService } from '../plans/plan.service';
+import { AreaPreview } from '../shared/area-preview/area-preview';
 import { Loader } from '../shared/loader/loader';
 import { Stepper } from '../shared/stepper/stepper';
 
 @Component({
   selector: 'app-activity-selector',
-  imports: [Loader, NgbAlert, Stepper],
+  imports: [Loader, NgbAlert, Stepper, AreaPreview],
   templateUrl: './activity-selector.html',
 })
 export class ActivitySelector {

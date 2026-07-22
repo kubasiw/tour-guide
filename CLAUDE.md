@@ -121,17 +121,26 @@ is complete; work now moves to "Beyond MVP" below.
    either) — don't build a bare decorative minimap just for its own sake.
    **Graduated to a real roadmap step (2026-07-21):** the above "actual reason" now exists — see
    step 10 below ("Map view for POIs").
-   **Idea captured, not built (2026-07-22), a more specific reframing of the idea above:** user
-   asked whether `activity-selector` and `trip-details` could show a **read-only preview** of what's
-   already been confirmed — the drawn `Area` on a small non-interactive map, and (once past
-   `activity-selector`) the selected activity badges too — so the user isn't just staring at a bare
-   form with no visual continuity from the step before. Recommendation: a small non-interactive
-   Leaflet map (no draw controls, just `L.tileLayer` + the existing `Area`-to-layer drawing logic
-   already in `area-picker.ts`'s `drawExistingArea`/`layerToArea` — reusable as-is, just without
-   `L.Control.Draw`) plus the same activity badges markup `plan-detail`/`plan-summary` already use.
-   Where exactly this preview lives (a persistent sidebar column vs. a collapsed summary card above
-   the form) is a real layout decision worth its own short design pass, not something to bolt on as
-   a one-line addition.
+   **✅ Built (2026-07-22), a more specific reframing of the idea above:** user asked whether
+   `activity-selector` and `trip-details` could show a **read-only preview** of what's already been
+   confirmed — the drawn `Area` on a small non-interactive map, and (once past `activity-selector`)
+   the selected activity badges too — so the user isn't just staring at a bare form with no visual
+   continuity from the step before. New shared dumb component `shared/area-preview/` (`area =
+   input.required<Area>()`, `activities = input<string[]>([])`) — a small Leaflet map (`L.tileLayer`
+   + a plain `L.circle`/`L.polygon` built directly from the `Area`, no `L.Control.Draw`, no
+   `FeatureGroup`/edit tracking needed since the shape never changes once the component exists) plus
+   the same activity-badge markup `plan-detail`/`plan-summary` already use, via the existing
+   `activityLabel()` helper. Single `afterNextRender()` init only (not a reactive `effect()` the way
+   `area-picker`/`poi-map` need) — deliberately simpler, since this component is only ever created
+   *after* the plan's area has already loaded and never changes afterward. **Layout resolved**: a
+   `row g-4` / `col-12 col-lg-7` (form) + `col-12 col-lg-5` (preview) split on both screens, same
+   stacking-below-`lg` precedent as `plan-detail`'s info/weather layout — `activity-selector` shows
+   only the area (activities are the *current* step being edited, redundant to preview); `trip-details`
+   shows both the area and the now-confirmed activity badges (both prior steps). Same scroll-wheel-zoom
+   fix as every other `L.map(...)` call in this app.
+   **Verified:** real screenshots on both screens showing the actual drawn circle fit to bounds
+   (`activity-selector`) and the circle plus "Zwiedzanie"/"Jedzenie" badges (`trip-details`), no
+   horizontal overflow at 375px mobile width (stacks below the form).
    **Gotcha found while migrating this:** `prisma migrate dev` refuses to run at all (even with
    `--create-only`) for any schema change with a warning attached (e.g. "this could fail if
    duplicate data exists") when the shell is non-interactive — no bypass flag exists for `migrate
@@ -201,17 +210,36 @@ is complete; work now moves to "Beyond MVP" below.
    fully support editing an existing `Plan` (confirmed working end-to-end for area editing in step
    5 itself) — the icon(s) just need to `routerLink` there. Once the single-view redesign happens,
    this same icon would naturally become the entry point *into* that combined view instead.
-   **Also captured: switch trip dates from start-date-plus-duration to a real date-range picker**
-   (arrival + departure, not arrival + "number of nights" requiring mental math). Recommended
-   approach if/when this is built: change only `trip-details`'s **input UI** to a two-ended
-   calendar range picker — `@ng-bootstrap/ng-bootstrap`'s `NgbDatepicker` has a documented range-
-   selection recipe (two bound `NgbDate` values + comparison helpers), so no new dependency.
-   Deliberately **keep `Plan.startDate`/`durationDays` as the stored/API representation unchanged**
-   — computing `durationDays` from the picked end date is a pure client-side conversion at submit
-   time, so this stays a frontend-only UX change instead of a schema/DTO/backend migration touching
-   everywhere `durationDays` is already consumed (weather's context-days logic, the trip-date badge,
-   etc.) — smaller blast radius for the same user-facing improvement, matching this project's
-   "small, verifiable steps" philosophy.
+   **✅ Built (2026-07-22): switched trip dates from start-date-plus-duration to a real date-range
+   picker** (arrival + departure, not arrival + "number of nights" requiring mental math) — prompted
+   by the user noticing the native `input[type=date]` had visibly different internal spacing than
+   the plain `input[type=number]` duration field next to it (a browser-native calendar-icon/padding
+   quirk that can't be fully harmonized via CSS), and asking whether to just patch the spacing or
+   finally do the date-range picker already captured above. **Confirmed via `AskUserQuestion`: do
+   the real picker, not a spacing patch** — the native-input inconsistency was a symptom, not the
+   root problem. **Deviates from the originally-recommended approach above in one way**: instead of
+   `NgbDatepicker`'s single-calendar dual-highlight range recipe (a custom `dayTemplate` tracking
+   hovered/from/to dates), used **two independent `NgbInputDatepicker` fields** ("Data przyjazdu" /
+   "Data wyjazdu", each a `form-control` + calendar-toggle button in an `input-group`) — much less
+   code (no custom day template/range-highlight CSS), still fully solves the actual complaint (real
+   calendar picking, no native OS chrome, consistent styling between the two fields), and still
+   reads as a genuine date-range picker to the user. Confirmed via reading the installed
+   `@ng-bootstrap/ng-bootstrap@21.0.0` type defs directly (not assumed from memory) that
+   `NgbInputDatepicker`/`NgbDate`/`NgbDateStruct`/`NgbCalendar` are all re-exported from the main
+   package barrel (`export * from '.../datepicker'`), same import style already used for
+   `NgbAlert`/`NgbTypeahead` elsewhere. A group-level `dateRangeValidator` (same shape as the
+   existing `passwordsMatchValidator` precedent) blocks submit if departure isn't after arrival.
+   **`Plan.startDate`/`durationDays` stayed exactly as planned** — `TripDetails.submit()` converts
+   the two picked `NgbDate`s to an ISO date string + a day-count (`NgbCalendar.getNext(start, 'd',
+   n)` / manual UTC-day-difference math) purely client-side; zero backend/DTO changes. Also bundled
+   in the same pass: the `shared/area-preview/` component (see step 3's note above) is now wired
+   into both `activity-selector` and `trip-details` via a `row g-4` / `col-lg-7`+`col-lg-5` layout.
+   **Verified:** browser walkthrough confirmed the form correctly seeds both dates from an existing
+   `Plan` (`startDate` + `durationDays` → arrival + computed departure), the calendar popup opens
+   and a real date click updates the bound field, and submitting persists the correct
+   `startDate`/`durationDays` back to the API (checked via a direct `fetch` against `GET
+   /plans/:id` post-submit) — not just that the UI looks right. No horizontal overflow at 375px on
+   either screen.
 6. ✅ **`my-plans/`** (saved templates, listing a user's plans) — the first feature that inherently
    requires an account, split out from "plan editing" below since the two don't depend on each
    other (reorder needs no auth, `my-plans/` needs no reorder) and each is substantial on its own.
@@ -361,6 +389,25 @@ is complete; work now moves to "Beyond MVP" below.
    **Deliberately out of scope for this pass:** streaming/SSE (brief says "rozważyć", not required)
    and a dedicated `find_candidates`/search tool (dumping the already-capped `MAX_CANDIDATES = 24`
    list into context every turn avoids needing one for now).
+   **Idea captured, not built (2026-07-22):** user wants the assistant to eventually go beyond
+   `PlanItem` edits — e.g. "zmień zainteresowania na X" (change activities), "zwiększ trochę obszar"
+   (nudge the area), or jumping to a specific step of the flow. If built, the same "reuse existing
+   service methods, don't invent new mutation logic" pattern the current 3 tools already follow
+   should carry over: `update_activities`/`update_trip_details` would map directly onto
+   `PlansService.update(...)` (already validates activity keys server-side via
+   `plans/activity-keys.ts`). **`update_area` is the genuinely risky one** — unlike the other
+   fields, an `Area` is real geometry (polygon points or a radius+center); asking the model to
+   compute "slightly bigger" itself risks it inventing coordinates with no anti-hallucination
+   guardrail the way text generation has one. If this is ever built, scope it to something
+   deterministic and safe first — e.g. only "increase/decrease a *radius*-type area by N meters"
+   (simple arithmetic on an existing value, no invented coordinates), not freeform polygon edits.
+   **Step navigation is a separate mechanism, not a tool call** — the chat's backend response only
+   ever mutates data today; jumping to a route is inherently a frontend action
+   (`Router.navigate`), so this would need a distinct signal in the chat response (e.g. a
+   `navigateTo` field) that `PlanChat` itself interprets and acts on, not something
+   `PlanChatService.handleMessage`'s tool loop can do on its own. Bigger scope than the current
+   3-tool set, especially the area-safety question — worth its own dedicated design pass, not a
+   quick addition to the existing tools.
    **Gotcha hit during browser verification:** this automated environment's `computer` tool clicks
    (both by `ref` and by raw screenshot-space coordinates) silently failed to focus the chat input
    — `document.activeElement` stayed `BODY` after the click with no error, and the screenshot pixel

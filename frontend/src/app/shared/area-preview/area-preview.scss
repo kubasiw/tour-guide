@@ -1,0 +1,8 @@
+@use 'variables' as v;
+
+.area-preview__map {
+  height: 220px;
+  width: 100%;
+  border-radius: v.$border-radius;
+  overflow: hidden;
+}

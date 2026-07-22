@@ -1,56 +1,90 @@
 <div class="container py-4">
   @if (plan.isLoading()) {
     <app-loader variant="spinner" />
-  } @else {
+  } @else if (plan.value(); as value) {
     <app-stepper [steps]="steps()" />
 
-    <div class="trip-details-card">
-      <h1 class="h3 mb-3">Termin i długość pobytu</h1>
+    <div class="row g-4">
+      <div class="col-12 col-lg-7">
+        <div class="trip-details-card">
+          <h1 class="h3 mb-3">Termin i długość pobytu</h1>
 
-      @if (errorMessage(); as message) {
-        <ngb-alert type="danger" [dismissible]="false">
-          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
-        </ngb-alert>
-      }
+          @if (errorMessage(); as message) {
+            <ngb-alert type="danger" [dismissible]="false">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ message }}
+            </ngb-alert>
+          }
 
-      <form [formGroup]="form" (ngSubmit)="submit()">
-        <div class="mb-3">
-          <label for="startDate" class="form-label">Data przyjazdu</label>
-          <input
-            id="startDate"
-            type="date"
-            class="form-control"
-            formControlName="startDate"
-            [attr.min]="today"
-            [class.is-invalid]="form.controls.startDate.invalid && form.controls.startDate.touched"
-          />
-          <div class="invalid-feedback">Podaj datę przyjazdu.</div>
+          <form [formGroup]="form" (ngSubmit)="submit()">
+            <div class="mb-3">
+              <label for="startDate" class="form-label">Data przyjazdu</label>
+              <div class="input-group">
+                <input
+                  id="startDate"
+                  class="form-control"
+                  formControlName="startDate"
+                  ngbDatepicker
+                  #dpStart="ngbDatepicker"
+                  [minDate]="minDate"
+                  placeholder="rrrr-mm-dd"
+                  [class.is-invalid]="
+                    form.controls.startDate.invalid && form.controls.startDate.touched
+                  "
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  aria-label="Otwórz kalendarz"
+                  (click)="dpStart.toggle()"
+                >
+                  <i class="bi bi-calendar3"></i>
+                </button>
+                <div class="invalid-feedback">Podaj datę przyjazdu.</div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="endDate" class="form-label">Data wyjazdu</label>
+              <div class="input-group">
+                <input
+                  id="endDate"
+                  class="form-control"
+                  formControlName="endDate"
+                  ngbDatepicker
+                  #dpEnd="ngbDatepicker"
+                  [minDate]="minDate"
+                  placeholder="rrrr-mm-dd"
+                  [class.is-invalid]="
+                    form.controls.endDate.touched &&
+                    (form.controls.endDate.invalid || form.errors?.['endBeforeStart'])
+                  "
+                />
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary"
+                  aria-label="Otwórz kalendarz"
+                  (click)="dpEnd.toggle()"
+                >
+                  <i class="bi bi-calendar3"></i>
+                </button>
+                <div class="invalid-feedback">Data wyjazdu musi być późniejsza niż przyjazdu.</div>
+              </div>
+            </div>
+
+            @if (submitting()) {
+              <app-loader variant="spinner" />
+            } @else {
+              <button type="submit" class="btn btn-primary">
+                Dalej<i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            }
+          </form>
         </div>
+      </div>
 
-        <div class="mb-3">
-          <label for="durationDays" class="form-label">Liczba dni</label>
-          <input
-            id="durationDays"
-            type="number"
-            class="form-control"
-            formControlName="durationDays"
-            min="1"
-            max="30"
-            [class.is-invalid]="
-              form.controls.durationDays.invalid && form.controls.durationDays.touched
-            "
-          />
-          <div class="invalid-feedback">Podaj liczbę dni od 1 do 30.</div>
-        </div>
-
-        @if (submitting()) {
-          <app-loader variant="spinner" />
-        } @else {
-          <button type="submit" class="btn btn-primary">
-            Dalej<i class="bi bi-arrow-right ms-1"></i>
-          </button>
-        }
-      </form>
+      <div class="col-12 col-lg-5">
+        <app-area-preview [area]="value.area" [activities]="value.activities" />
+      </div>
     </div>
   }
 </div>

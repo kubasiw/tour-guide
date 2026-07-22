@@ -1,0 +1,41 @@
+<div class="plan-chat">
+  <h2 class="h6 mb-2"><i class="bi bi-chat-dots me-1"></i>Asystent AI</h2>
+
+  @if (messages().length > 0) {
+    <div class="plan-chat__messages mb-2">
+      @for (message of messages(); track $index) {
+        <p
+          class="plan-chat__message mb-2"
+          [class.plan-chat__message--user]="message.role === 'user'"
+          [class.plan-chat__message--assistant]="message.role === 'assistant'"
+        >
+          {{ message.text }}
+        </p>
+      }
+    </div>
+  }
+
+  @if (error(); as message) {
+    <ngb-alert type="danger" class="small py-2" [dismissible]="false">
+      {{ message }}
+    </ngb-alert>
+  }
+
+  <div class="input-group">
+    <input
+      #chatInput
+      type="text"
+      class="form-control"
+      placeholder="np. dodaj jakiś szlak w pobliżu"
+      [disabled]="sending()"
+      (keydown.enter)="send()"
+    />
+    <button type="button" class="btn btn-accent" [disabled]="sending()" (click)="send()">
+      @if (sending()) {
+        <app-loader variant="spinner" />
+      } @else {
+        <i class="bi bi-send"></i>
+      }
+    </button>
+  </div>
+</div>

@@ -238,10 +238,12 @@ is complete; work now moves to "Beyond MVP" below.
    earlier for untrustworthy drag simulation — see the Leaflet vertex-drag note above) confirmed
    against a fresh `GET .../items`, plus a real click on the list's remove button — all at both
    mobile and desktop width.
-8. AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
+8. ✅ AI integration — see `PROJECT_BRIEF.md`'s "Integracja AI" section for the full design
    (`AiModule` wrapping the Claude API, `PlanGeneratorModule` gets an AI narration layer on top of
    the rule-based candidates, `PlanChatModule`/`plan-chat/` for tool-calling plan edits). Also
    gated behind login, for cost control this time (anonymous users get a non-LLM overview instead).
+   All three slices below are now done — area description, narration, and the `PlanChatModule`
+   tool-calling assistant.
    **First slice done (2026-07-21): short AI-written area description.** New standalone
    `AiModule` (`backend/src/ai/`, mirrors `GeocodingModule`'s shape) wraps `@anthropic-ai/sdk` —
    `AiService.generateAreaDescription(placeName)` calls `claude-haiku-4-5-20251001` (cheap/fast,
@@ -295,7 +297,55 @@ is complete; work now moves to "Beyond MVP" below.
    not a reactively-recomputed resource) — deliberately minimal display (plain paragraph, no
    dedicated styling pass); the polished presentation belongs to the new "finalized-plan summary
    view" step (step 11 below), not this one.
-   **Not yet built:** `PlanChatModule`'s tool-calling plan-editing assistant.
+   **Third slice done (2026-07-21): `PlanChatModule` — the tool-calling plan-editing assistant,
+   and this app's first use of tool-calling anywhere.** New `backend/src/plan-chat/` (per the
+   brief's own module list, the last piece of "Integracja AI"): `AiService.sendToolMessage(system,
+   messages, tools)` is a thin wrapper returning the raw SDK `Message` (unlike the existing
+   text-only helpers, the tool loop needs to inspect `stop_reason`/`content` blocks directly) —
+   `Tool`/`ToolUseBlock`/`ToolResultBlockParam` shapes were confirmed by reading the installed
+   `@anthropic-ai/sdk@0.112.4` type defs directly rather than assumed. `PlanChatService
+   .handleMessage(planId, message, history)` builds a system prompt embedding the plan's current
+   items and available candidates (via the already-built `PlanGeneratorService.findItems`/
+   `findCandidates` — which needed a new `exports: [PlanGeneratorService]` on
+   `PlanGeneratorModule`, its first cross-module consumer), then runs a tool loop
+   (`MAX_TOOL_ITERATIONS = 4`) against three tools that map 1:1 onto existing service methods:
+   `add_item`/`remove_item`/`reorder_items`. "Zamień" (swap) needs no dedicated tool — the model
+   just emits `remove_item` + `add_item` as two `tool_use` blocks in the same turn, confirmed
+   working via a real "usuń X i dodaj zamiast tego Y" curl test. **Confirmed via `AskUserQuestion`:
+   tool calls apply immediately** (not a propose-then-approve flow) — the simpler first slice,
+   since add/remove/reorder are all cheaply reversible via the same chat or the existing list's own
+   remove button. `POST /plans/:planId/chat` is hard `JwtAuthGuard`-gated, same AI-cost-gating
+   precedent as narration/ai-description. **Stateless, no new Prisma model:** the frontend holds
+   the full conversation array and echoes it back each request — matches every other endpoint in
+   this app (no server-side session state anywhere) and confirmed working across multiple turns via
+   curl (a `history` array sent back correctly continued the same conversation, resolving "usuń
+   pomnik Fryderyka Chopina" against an item added two turns earlier). **Anti-hallucination scope
+   limits, told to the model directly rather than silently glossed over:** neither `Poi` nor any
+   other model has price/rating data — verified via a real curl test that asking "która restauracja
+   ma najlepsze oceny i jest najtańsza" gets an honest "I don't have that data" instead of an
+   invented answer; `PlanItem.dayNumber` is nullable/unused (no day-scheduling since the
+   manual-selection redesign) — the prompt says so too, so "dodaj to na drugi dzień" adds the item
+   but admits days aren't tracked. Frontend: new `plans/plan-chat.service.ts` (plain `Observable`,
+   same one-shot-mutation pattern as every other action method, not a `resource()`) and
+   `plans/plan-chat/plan-chat.ts` (smart component — `itemsChanged = output<void>()` lets
+   `PoiPicker` reload its `items` resource after the chat mutates the plan, same
+   reload-after-mutation pattern already used for toggle/reorder; chat message input is a plain
+   `viewChild` template-ref read directly, no `FormsModule`/`ReactiveForms`, matching this app's
+   established "one transient field" precedent). Mounted in `poi-picker.html` gated on
+   `authService.isAuthenticated()` but deliberately **not** gated on having ≥1 item already (unlike
+   the finalize/narration buttons) — the chat should work to add the very first item too.
+   **Deliberately out of scope for this pass:** streaming/SSE (brief says "rozważyć", not required)
+   and a dedicated `find_candidates`/search tool (dumping the already-capped `MAX_CANDIDATES = 24`
+   list into context every turn avoids needing one for now).
+   **Gotcha hit during browser verification:** this automated environment's `computer` tool clicks
+   (both by `ref` and by raw screenshot-space coordinates) silently failed to focus the chat input
+   — `document.activeElement` stayed `BODY` after the click with no error, and the screenshot pixel
+   space itself turned out scaled down from the reported viewport size (800×569 screenshot for a
+   requested 1280×900 viewport). Same class of issue as the previously-documented Leaflet
+   vertex-drag/`NgbTypeahead`-selection simulation limits — worked around identically: set the
+   input's value via the native `HTMLInputElement` value setter + a dispatched `input` event, then
+   called `.click()` on the send button directly via `javascript_tool`, and confirmed the real
+   `POST /plans/:id/chat` network call fired and the reply/live item-list update rendered correctly.
    **Scope note (2026-07-20):** narration/chat need real design before starting (the current data
    model has no day structure — `PlanItem.dayNumber` is nullable/unused since the manual-selection
    redesign in step 3 — so "AI narrates the day" from the original brief needs rethinking against
@@ -714,13 +764,16 @@ of testing every small change end-to-end regardless of size):
 - The frontend brief calls for feature folders under `src/app/` mirroring the user flow: `auth/` ✅,
   `area-picker/` ✅, `activity-selector/` ✅, `trip-details/` ✅, `plan-view/` (currently `plans/
   plan-detail/`, a minimal stand-in — may get renamed/expanded once real generation exists),
-  `plan-chat/`, `my-plans/` ✅ — the rest don't exist yet, add them in the order in the Roadmap above.
+  `plan-chat/` ✅ (built as `plans/plan-chat/`, nested under `plans/` alongside `poi-picker`/
+  `plan-summary` rather than the brief's own top-level sketch — deliberate deviation, consistent
+  with this project's established practice of nesting all plan-specific components under `plans/`),
+  `my-plans/` ✅ — the rest don't exist yet, add them in the order in the Roadmap above.
 - The backend brief calls for one Nest module per bounded concern: `HealthModule` ✅, `AuthModule` ✅
   (+ `UsersModule` ✅ used internally by it), `PlansModule` ✅ (also owns `Area` — see the Roadmap's
   step 4 note for why there's no separate `AreasModule`), `WeatherModule` ✅, `PoiModule` ✅,
   `PlanGeneratorModule` ✅ (backend-only — its display lives in `plan-detail`, not a new frontend
-  feature folder, since it's inherently the plan's own view). Not built yet: `AiModule`,
-  `PlanChatModule` — build them in that order (see Roadmap above).
+  feature folder, since it's inherently the plan's own view), `AiModule` ✅, `PlanChatModule` ✅ —
+  every module in the brief's original list now exists.
 - Frontend talks to backend over plain HTTP (`HttpClient`); the base URL is the shared
   `API_BASE_URL` constant in `frontend/src/app/core/api-base-url.ts` (hardcoded to
   `http://localhost:3000` during this early stage — no environment-based config exists yet, but at

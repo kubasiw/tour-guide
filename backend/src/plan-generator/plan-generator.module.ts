@@ -9,5 +9,6 @@ import { PlanGeneratorService } from './plan-generator.service';
   imports: [PlansModule, PoiModule, AiModule],
   controllers: [PlanGeneratorController],
   providers: [PlanGeneratorService],
+  exports: [PlanGeneratorService],
 })
 export class PlanGeneratorModule {}

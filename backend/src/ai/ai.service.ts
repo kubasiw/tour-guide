@@ -94,6 +94,26 @@ export class AiService {
     }
   }
 
+  public async sendToolMessage(
+    system: string,
+    messages: Anthropic.MessageParam[],
+    tools: Anthropic.Tool[],
+  ): Promise<Anthropic.Message> {
+    try {
+      return await this.client.messages.create({
+        model: MODEL,
+        max_tokens: NARRATION_MAX_TOKENS,
+        system,
+        messages,
+        tools,
+      });
+    } catch {
+      throw new BadGatewayException(
+        'Failed to get a response from the chat assistant',
+      );
+    }
+  }
+
   private parseThemedDescription(text: string): {
     description: string;
     theme: AreaTheme;

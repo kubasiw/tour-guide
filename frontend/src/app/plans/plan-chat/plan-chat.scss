@@ -1,0 +1,22 @@
+@use 'variables' as v;
+
+.plan-chat__messages {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.plan-chat__message {
+  padding: 0.5rem 0.75rem;
+  border-radius: v.$border-radius;
+  max-width: 85%;
+}
+
+.plan-chat__message--user {
+  margin-left: auto;
+  background-color: v.$primary;
+  color: #fff;
+}
+
+.plan-chat__message--assistant {
+  background-color: var(--bs-secondary-bg);
+}

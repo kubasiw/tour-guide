@@ -6,6 +6,7 @@ import { AiModule } from './ai/ai.module';
 import { AuthModule } from './auth/auth.module';
 import { GeocodingModule } from './geocoding/geocoding.module';
 import { HealthModule } from './health/health.module';
+import { PlanChatModule } from './plan-chat/plan-chat.module';
 import { PlanGeneratorModule } from './plan-generator/plan-generator.module';
 import { PlansModule } from './plans/plans.module';
 import { PoiModule } from './poi/poi.module';
@@ -24,6 +25,7 @@ import { WeatherModule } from './weather/weather.module';
     PlanGeneratorModule,
     GeocodingModule,
     AiModule,
+    PlanChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

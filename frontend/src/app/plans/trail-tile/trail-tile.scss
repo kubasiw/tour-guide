@@ -15,6 +15,18 @@
   border-color: var(--color-trail-green);
 }
 
+// Green, matching .poi-tile--hovered exactly — hover here is the same
+// browsing-affordance echo as the POI hover-sync (list <-> map), not the
+// "single most-important action" case amber is reserved for. What amber
+// *does* mark is the map-side distinction between an already-pinned trail
+// (green, possibly several at once) and a not-yet-added one merely being
+// previewed (see TrailMap's own hover styling) — that split lives on the
+// map, not on this tile's own hover border.
+.trail-tile--hovered {
+  border-color: var(--color-trail-green);
+  box-shadow: 0 0 0 2px var(--color-trail-green);
+}
+
 .trail-tile__badge {
   top: 0.5rem;
   right: 0.5rem;

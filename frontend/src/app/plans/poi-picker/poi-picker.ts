@@ -16,8 +16,15 @@ import { PlanService } from '../plan.service';
 import { PLAN_STATUS_FINAL } from '../plan-status';
 import { PoiMap } from '../poi-map/poi-map';
 import { PoiTile } from '../poi-tile/poi-tile';
-import { TrailMap } from '../trail-map/trail-map';
+import { PinnedTrail, TrailMap } from '../trail-map/trail-map';
 import { TrailTile } from '../trail-tile/trail-tile';
+
+// Debounced, not fired on every tile the mouse passes over while scanning
+// the list — same SEARCH_DEBOUNCE_MS precedent as plan-setup's own
+// typeahead. Only gates the geometry *fetch*; the hover highlight itself
+// (for an already-pinned, already-cached trail) is instant, see
+// onTrailHoverChange.
+const HOVER_GEOMETRY_FETCH_DEBOUNCE_MS = 300;
 
 @Component({
   selector: 'app-poi-picker',
@@ -80,12 +87,38 @@ export class PoiPicker {
   protected readonly toggleError = signal<string | null>(null);
   protected readonly trailToggleError = signal<string | null>(null);
 
-  // The single currently-previewed trail's geometry — set when a trail tile
-  // is clicked, cleared when that same trail is removed again. Only one
-  // preview at a time (see TrailMap's own amber "single selection" convention).
-  protected readonly previewedTrailId = signal<string | null>(null);
-  protected readonly previewedTrailGeometry = signal<TrailGeometry | null>(null);
-  protected readonly trailPreviewLoading = signal(false);
+  // Fetched trail geometries, keyed by Trail.id — a cache, not ephemeral
+  // preview state: every currently-pinned (added-to-plan) trail's geometry
+  // lives here permanently (fetched eagerly, see the constructor effect
+  // below), and a not-yet-pinned trail's geometry is added here too the
+  // first time it's hovered, so re-hovering it later is free.
+  protected readonly trailGeometries = signal<Map<string, TrailGeometry>>(new Map());
+  private readonly geometryFetchInFlight = new Set<string>();
+
+  protected readonly hoveredTrailId = signal<string | null>(null);
+  private hoverGeometryFetchTimeoutId?: ReturnType<typeof setTimeout>;
+
+  // Every currently-pinned trail paired with its geometry — populated
+  // progressively as each fetch completes (see the eager-load effect
+  // below), consumed by TrailMap to render all of them permanently.
+  protected readonly pinnedTrails = computed<PinnedTrail[]>(() => {
+    const geometries = this.trailGeometries();
+    return (this.trailItems.value() ?? []).flatMap((item) => {
+      const geometry = geometries.get(item.trail.id);
+      return geometry ? [{ trail: item.trail, geometry }] : [];
+    });
+  });
+
+  // Only non-null for a trail that's hovered *and* not already pinned —
+  // an already-pinned+hovered trail is highlighted in place by TrailMap
+  // via `pinnedTrails`/`hoveredTrailId` instead of a separate preview layer.
+  protected readonly hoverPreviewGeometry = computed(() => {
+    const hoveredId = this.hoveredTrailId();
+    if (!hoveredId || this.selectedTrailIds().has(hoveredId)) {
+      return null;
+    }
+    return this.trailGeometries().get(hoveredId) ?? null;
+  });
 
   protected readonly orderedItems = signal<PlanItemWithPoi[]>([]);
 
@@ -125,6 +158,19 @@ export class PoiPicker {
       const loaded = this.items.value();
       if (loaded) {
         this.orderedItems.set(loaded);
+      }
+    });
+
+    // Eagerly fetches geometry for every currently-pinned trail — covers
+    // both a freshly-added trail (trailItems reloads after the POST) and a
+    // returning visit where trails were already pinned in an earlier
+    // session (trailGeometries itself never persists across a reload).
+    effect(() => {
+      const items = this.trailItems.value();
+      if (items) {
+        for (const item of items) {
+          this.ensureTrailGeometryLoaded(item.trail);
+        }
       }
     });
   }
@@ -198,10 +244,9 @@ export class PoiPicker {
   }
 
   // Mirrors `toggle(poi)`'s add/remove shape against the separate
-  // Trail/PlanTrailItem models, plus a bonus: adding a trail also previews
-  // its real geometry on `TrailMap` (fetched lazily, only on click — not for
-  // every candidate up front); removing the previewed trail clears the
-  // preview too.
+  // Trail/PlanTrailItem models. Pinning a trail onto the map permanently is
+  // handled by the eager-load effect (reacts to `trailItems` reloading),
+  // not here directly.
   protected toggleTrail(trail: Trail): void {
     this.trailToggleError.set(null);
 
@@ -211,38 +256,63 @@ export class PoiPicker {
         return;
       }
       this.planService.removeTrailItem(this.planId(), item.id).subscribe({
-        next: () => {
-          this.trailItems.reload();
-          if (this.previewedTrailId() === trail.id) {
-            this.previewedTrailId.set(null);
-            this.previewedTrailGeometry.set(null);
-          }
-        },
+        next: () => this.trailItems.reload(),
         error: (err: unknown) => this.trailToggleError.set(extractErrorMessage(err)),
       });
     } else {
       this.planService.addTrailItem(this.planId(), trail.id).subscribe({
-        next: () => {
-          this.trailItems.reload();
-          this.previewTrail(trail);
-        },
+        next: () => this.trailItems.reload(),
         error: (err: unknown) => this.trailToggleError.set(extractErrorMessage(err)),
       });
     }
   }
 
-  private previewTrail(trail: Trail): void {
-    this.previewedTrailId.set(trail.id);
-    this.trailPreviewLoading.set(true);
+  // Hovering a tile sets `hoveredTrailId` immediately, so TrailMap can
+  // instantly emphasize an already-pinned (already-cached) trail with no
+  // network round-trip. Only the geometry *fetch* for a not-yet-pinned
+  // trail is debounced — a brief hover while scanning the list shouldn't
+  // fire a request at all.
+  protected onTrailHoverChange(trail: Trail, hovered: boolean): void {
+    if (this.hoverGeometryFetchTimeoutId !== undefined) {
+      clearTimeout(this.hoverGeometryFetchTimeoutId);
+      this.hoverGeometryFetchTimeoutId = undefined;
+    }
 
+    if (!hovered) {
+      if (this.hoveredTrailId() === trail.id) {
+        this.hoveredTrailId.set(null);
+      }
+      return;
+    }
+
+    this.hoveredTrailId.set(trail.id);
+    this.hoverGeometryFetchTimeoutId = setTimeout(() => {
+      this.ensureTrailGeometryLoaded(trail);
+    }, HOVER_GEOMETRY_FETCH_DEBOUNCE_MS);
+  }
+
+  private ensureTrailGeometryLoaded(trail: Trail): void {
+    if (this.trailGeometries().has(trail.id) || this.geometryFetchInFlight.has(trail.id)) {
+      return;
+    }
+
+    this.geometryFetchInFlight.add(trail.id);
     this.trailService.getGeometry(trail.osmId).subscribe({
       next: (geometry) => {
-        this.trailPreviewLoading.set(false);
-        this.previewedTrailGeometry.set(geometry);
+        this.geometryFetchInFlight.delete(trail.id);
+        this.trailGeometries.update((map) => {
+          const next = new Map(map);
+          next.set(trail.id, geometry);
+          return next;
+        });
       },
-      error: (err: unknown) => {
-        this.trailPreviewLoading.set(false);
-        this.trailToggleError.set(extractErrorMessage(err));
+      // Fails silently, per-trail — a trail whose geometry can't be loaded
+      // (a real risk given Overpass/Waymarked Trails' own known outages,
+      // see CLAUDE.md) simply doesn't render on the map; its tile/list entry
+      // is unaffected, and surfacing a dedicated error banner for a
+      // background hover-fetch would be noisier than useful.
+      error: () => {
+        this.geometryFetchInFlight.delete(trail.id);
       },
     });
   }

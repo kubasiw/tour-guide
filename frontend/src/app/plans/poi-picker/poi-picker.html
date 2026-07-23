@@ -110,7 +110,12 @@
       <h3 class="h6">Twoje szlaki</h3>
       <ul class="list-group mb-3">
         @for (item of trailItems.value(); track item.id) {
-          <li class="list-group-item d-flex align-items-center gap-2">
+          <li
+            class="list-group-item d-flex align-items-center gap-2"
+            [class.list-group-item-success]="hoveredTrailId() === item.trail.id"
+            (mouseenter)="onTrailHoverChange(item.trail, true)"
+            (mouseleave)="onTrailHoverChange(item.trail, false)"
+          >
             <i class="bi bi-signpost-2-fill text-success flex-shrink-0"></i>
             <span class="flex-grow-1 text-truncate">{{ item.trail.name }}</span>
             <button
@@ -149,13 +154,20 @@
                 <app-trail-tile
                   [trail]="trail"
                   [selected]="isTrailSelected(trail)"
+                  [hovered]="hoveredTrailId() === trail.id"
                   (toggled)="toggleTrail(trail)"
+                  (hoverChange)="onTrailHoverChange(trail, $event)"
                 />
               }
             </div>
           </div>
           <div class="col-12 col-lg-6">
-            <app-trail-map [geometry]="previewedTrailGeometry()" />
+            <app-trail-map
+              [pinnedTrails]="pinnedTrails()"
+              [hoveredTrailId]="hoveredTrailId()"
+              [hoverPreviewGeometry]="hoverPreviewGeometry()"
+              (trailHovered)="hoveredTrailId.set($event)"
+            />
           </div>
         </div>
       }

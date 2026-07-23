@@ -1,10 +1,13 @@
 <div
   class="trail-tile card text-start bg-success-subtle"
   [class.trail-tile--selected]="selected()"
+  [class.trail-tile--hovered]="hovered()"
   role="button"
   tabindex="0"
   (click)="toggled.emit()"
   (keydown.enter)="toggled.emit()"
+  (mouseenter)="hoverChange.emit(true)"
+  (mouseleave)="hoverChange.emit(false)"
 >
   <div class="card-body p-2 position-relative d-flex align-items-center gap-2">
     @if (selected()) {

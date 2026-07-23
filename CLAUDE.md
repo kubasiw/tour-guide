@@ -1142,6 +1142,63 @@ is complete; work now moves to "Beyond MVP" below.
     button inside the error `ngb-alert`, calling `trailCandidates.reload()` (the same `reload()`
     already used elsewhere on `rxResource`, e.g. `items.reload()`) — verified live that clicking it
     fires a genuine new `GET .../trail-candidates` request.
+    **Hover-to-preview + click-to-pin, multiple trails at once (2026-07-23), user's own idea:**
+    reworked from the original one-trail-at-a-time click-to-preview model — hovering a trail tile
+    now previews its geometry on `TrailMap` without adding it to the plan, and clicking still
+    toggles it into/out of the plan, but now *every* pinned trail renders permanently on the map at
+    once (not just the last one clicked), with reverse hover-sync (map → tile) too. Confirmed with
+    the user first that this wasn't prohibitively costly: the real costs are (a) a geometry fetch
+    per newly-hovered trail — mitigated with a 300ms debounce (`HOVER_GEOMETRY_FETCH_DEBOUNCE_MS`,
+    same precedent as `plan-setup`'s search typeahead) plus a permanent client-side cache keyed by
+    `Trail.id` (`PoiPicker.trailGeometries`), so re-hovering a trail already seen is free; and (b)
+    rendering — a single trail can be ~200+ `<path>` segments (confirmed earlier this session: 224
+    for one real Tatra route), fine for "a few" pinned trails, a real but accepted scaling concern
+    if someone pinned many long trails at once.
+    **`PoiPicker` state**: `trailGeometries` (`Map<string, TrailGeometry>`, the cache — populated
+    both eagerly, via a `trailItems`-reactive effect that loads every currently-pinned trail's
+    geometry on load/reload, and lazily on hover) and `hoveredTrailId` are the only new signals;
+    `pinnedTrails`/`hoverPreviewGeometry` are `computed()`s derived from them (`hoverPreviewGeometry`
+    is deliberately `null` whenever the hovered trail is already pinned — an already-pinned+hovered
+    trail is highlighted in place, not given a second preview layer). `onTrailHoverChange(trail,
+    hovered)` sets `hoveredTrailId` *immediately* (so an already-cached/pinned trail highlights with
+    zero latency) and only debounces the geometry *fetch* itself. The old single-preview
+    `previewedTrailId`/`previewedTrailGeometry`/`trailPreviewLoading` signals and `previewTrail()`
+    method are gone entirely, replaced by this cache-driven model.
+    **`TrailMap` rewritten** to accept `pinnedTrails: PinnedTrail[]` (rendered permanently, trail
+    green — matches this app's own "multi-select uses green" convention, since several trails can
+    now be pinned at once, unlike the original single-preview slice) plus `hoveredTrailId`/
+    `hoverPreviewGeometry` inputs and a `trailHovered` output (map → parent, for the reverse
+    direction). Two separate `effect()`s, deliberately split the same way `PoiMap`'s own hover-vs-
+    rebuild split already is: one rebuilds all pinned polylines only when the *pinned set itself*
+    changes (reading `hoveredTrailId` via `untracked()` for its own initial-style seed, exact same
+    fix `PoiMap.renderMarkers` already needed once for the identical reason — a tracked read inside
+    an effect-called method still creates a dependency), the other only restyles on hover changes
+    (thickens an already-pinned trail's own green polyline via `setStyle`, or draws/removes a
+    single amber-colored temporary preview layer for a hovered-but-not-yet-pinned trail) — never a
+    full teardown/rebuild on hover, the exact bug already found and fixed once for `PoiMap`'s own
+    marker layer, deliberately designed around from the start here instead of hit again.
+    **Fit-bounds rule, to avoid yet another hover-triggered map-jump:** the view is fit to content
+    exactly once — either when the pinned set first becomes non-empty (and again on any later
+    pinned-set change, a deliberate user action), or, if nothing is pinned yet, on the very first
+    hover-preview (`hasFitBounds` flag) — never again after that on a mere hover, so previewing a
+    second, third, etc. candidate while browsing doesn't repeatedly re-animate the map.
+    **Color convention question resolved along the way:** `TrailTile.hovered` uses trail green (not
+    amber) — matching `.poi-tile--hovered`'s own precedent exactly, since this is the same
+    browsing-affordance hover-sync as POI tiles/map, not the "single most-important action" case
+    amber is reserved for. Amber is reserved specifically for the map's own pinned-vs-preview
+    *distinction* (committed=green vs merely-being-considered=amber), not for hover in general.
+    **Verified live:** hovering a not-yet-pinned candidate tile (via direct component-method calls,
+    the same `window.ng.getComponent()` workaround already established for this environment's
+    unreliable synthetic-hover automation) set `hoveredTrailId` instantly, then — after the debounce
+    — fetched and rendered a real amber preview polyline (confirmed both green `#3b6d11` and amber
+    `#854f0b` strokes present simultaneously on the map); un-hovering removed the preview cleanly;
+    hovering an *already-pinned* trail left the path count unchanged (no duplicate layer) while its
+    stroke-width visibly changed (4 → 7); and dispatching a real `mouseover` DOM event on a pinned
+    polyline's actual rendered `<path>` correctly set `hoveredTrailId` and highlighted the matching
+    "Twoje szlaki" list row — confirming the reverse (map → tile) direction genuinely works via
+    real Leaflet event wiring, not just the forward direction. Two trails pinned simultaneously via
+    curl (bypassing a flaky Overpass discovery call that day) rendered as 23 real `<path>` segments
+    together on one map, with no horizontal overflow at 375px mobile width.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

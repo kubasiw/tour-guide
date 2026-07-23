@@ -9,7 +9,9 @@ import { Trail } from '../../core/trail.model';
 export class TrailTile {
   public readonly trail = input.required<Trail>();
   public readonly selected = input(false);
+  public readonly hovered = input(false);
   public readonly toggled = output<void>();
+  public readonly hoverChange = output<boolean>();
 
   protected readonly metaLine = computed(() =>
     [this.trail().ref, this.trail().distanceKm ? `${this.trail().distanceKm} km` : null]

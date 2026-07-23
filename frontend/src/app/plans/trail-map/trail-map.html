@@ -1,6 +1,6 @@
 <div #mapContainer class="trail-map__container"></div>
-@if (!geometry()) {
+@if (pinnedTrails().length === 0 && !hoverPreviewGeometry()) {
   <p class="text-body-secondary small mt-2 mb-0">
-    Kliknij szlak z listy, aby zobaczyć jego przebieg na mapie.
+    Najedź na szlak z listy, aby zobaczyć jego przebieg, kliknij, aby dodać go na stałe do mapy.
   </p>
 }

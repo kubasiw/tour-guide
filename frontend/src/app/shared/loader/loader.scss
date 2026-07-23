@@ -5,10 +5,11 @@
   width: 100%;
 }
 
-// Spinner: small inline indicator (buttons, inline checks).
+// Spinner: small inline indicator (buttons, inline checks). `padding: 0.5rem`
+// lives as a plain `p-2` utility class in the template (Bootstrap's own
+// $spacers scale) instead of here.
 .loader--spinner {
   @include m.flex-center;
-  padding: 0.5rem;
 }
 
 .loader__spinner {
@@ -20,10 +21,10 @@
   animation: loader-spin 0.8s linear infinite;
 }
 
-// Skeleton: placeholder rows for lists/cards.
+// Skeleton: placeholder rows for lists/cards. `gap: 0.5rem` lives as a plain
+// `gap-2` utility class in the template instead of here.
 .loader--skeleton {
   flex-direction: column;
-  gap: 0.5rem;
 }
 
 .loader__skeleton-row {

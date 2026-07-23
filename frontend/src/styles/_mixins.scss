@@ -20,6 +20,17 @@
 // Sass variable without also re-importing variables.scss, which would double
 // up its `:root` custom-property block when mixed with the global `@import`
 // in styles.scss).
+// Deliberately NOT migrated to Bootstrap spacing utility classes despite the
+// app-wide convention (see CLAUDE.md's "Positioning convention" note) —
+// same reasoning as `_button-loading.scss`'s `.btn-loading`: this mixin is
+// `@include`d into 6+ components specifically so each one only has to
+// remember one line, not re-declare margin/padding/background/border/
+// radius at every usage site. Splitting margin/padding out to utility
+// classes on each of those 6+ host elements would fragment one working,
+// intentionally-shared abstraction into two mechanisms for no real benefit.
+// `2rem`/`1.5rem`/`1rem`/`3rem` here don't need $spacers-map matching for
+// the same reason — they're internal to a single reused unit, not scattered
+// hand-rolled values across independent components.
 @mixin panel-card($max-width: 420px) {
   max-width: $max-width;
   margin: 3rem auto 0;

@@ -84,9 +84,16 @@
   color: #fff;
 }
 
+// `padding: 0.25rem 0.5rem` lives as `py-1 px-2` utility classes added
+// directly to the `className` string passed to `L.DomUtil.create(...)` in
+// plan-setup.ts instead of here — confirmed by reading Leaflet's own source
+// (`el.className = className`, a plain assignment) that a space-separated
+// class string works identically to a template's static class list, even
+// though this element is created imperatively, not by Angular. Bootstrap's
+// CSS is global, not component-scoped, so the utility classes apply
+// regardless of how the element was created.
 .plan-setup__trails-legend {
   background-color: #fff;
-  padding: 0.25rem 0.5rem;
   border-radius: 0.6rem;
   font-size: 0.75rem;
   box-shadow: none;

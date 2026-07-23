@@ -6,7 +6,7 @@
   } @else if (plan.value(); as value) {
     <app-stepper [steps]="steps()" />
 
-    <div class="plan-summary__hero mb-3">
+    <div class="plan-summary__hero px-4 mb-3">
       <h1 class="h3 mb-2"><i class="bi bi-check2-circle text-success me-2"></i>Podsumowanie planu</h1>
 
       @if (aiDescription.value(); as desc) {
@@ -100,7 +100,7 @@
               @for (item of loadedItems; track item.id; let i = $index) {
                 <li class="trail-list__item position-relative">
                   <span class="trail-list__marker position-relative z-1">{{ i + 1 }}</span>
-                  <div class="trail-list__content">
+                  <div class="trail-list__content py-2 gap-2">
                     <span
                       class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
                       [class]="poiTypeColors[item.poi.type]"

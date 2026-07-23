@@ -417,7 +417,7 @@ export class PlanSetup {
     const legendControl = new L.Control({ position: 'bottomleft' });
 
     legendControl.onAdd = (): HTMLElement => {
-      const container = L.DomUtil.create('div', 'plan-setup__trails-legend');
+      const container = L.DomUtil.create('div', 'plan-setup__trails-legend py-1 px-2');
       container.innerHTML =
         'Szlaki: <a href="https://waymarkedtrails.org" target="_blank" rel="noopener">Waymarked Trails</a>';
       L.DomEvent.disableClickPropagation(container);

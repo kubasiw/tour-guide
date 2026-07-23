@@ -1355,14 +1355,36 @@ Frontend-specific:
   make the description reach the same distance down. Confirmed live (`getBoundingClientRect()`)
   that the tighter padding still leaves the meta line and the description/generate-button below it
   non-overlapping in both states (with a generated description, and before one exists yet), tile
-  height still exactly 115.2px, no horizontal overflow at 375px. **Broader ask, deferred by
-  agreement:** the user also asked whether *every* hand-rolled scss padding/margin value across the
-  app should be swept and replaced with Bootstrap's `$spacers`-scale utility classes (extending the
-  `$spacers` map in `_variables.scss` for any custom step that doesn't already exist, per the
-  spacing convention above) — agreed this is a good direction (it's already the documented
-  principle, just not yet applied everywhere), but scoped as its own future pass rather than folded
-  into this one small fix, same reasoning as the `position` utility-class audit two entries above:
-  a full-codebase sweep is real, separate work, not a drive-by addition to an unrelated tweak.
+  height still exactly 115.2px, no horizontal overflow at 375px.
+  **✅ Broader sweep done (2026-07-22):** the deferred full-codebase padding/margin/gap audit — every
+  `padding`/`margin`/`gap` declaration in the frontend's scss checked against Bootstrap's `$spacers`
+  scale (0/.25/.5/1/1.5/3rem) and migrated to a utility class wherever it matched, **partial
+  migration** for asymmetric rules where only one axis matched (e.g. `padding: 0.5rem 0.75rem` →
+  `py-2` utility class + `padding-left/right: 0.75rem` left in scss, since only the vertical value
+  hit the scale): `loader.scss` (`.loader--spinner`'s `padding` → `p-2`, `.loader--skeleton`'s `gap`
+  → `gap-2`, both in `loader.html`), `_trail-list.scss`'s `.trail-list__content` (vertical padding
+  + `gap`, both 0.5rem → `py-2 gap-2` at both usage sites in `poi-picker.html`/`plan-summary.html`),
+  `plan-summary.scss`'s `.plan-summary__hero` (horizontal 1.5rem → `px-4`), `plan-chat.scss`'s
+  `.plan-chat__message` (vertical 0.5rem → `py-2`). **Also migrated an imperatively-created Leaflet
+  element**, confirming this works even outside Angular templates: `.plan-setup__trails-legend`'s
+  `padding: 0.25rem 0.5rem` → `py-1 px-2` added directly into the `className` string passed to
+  `L.DomUtil.create(...)` in `plan-setup.ts` — verified by reading Leaflet's own source
+  (`el.className = className`, a plain assignment) that a space-separated class string works
+  identically there to a template's static class list, since Bootstrap's CSS is global, not
+  component-scoped. **Two exceptions kept, documented in place, same reasoning as the
+  `_button-loading.scss` exception from the position-utility audit:** (1) `_mixins.scss`'s
+  `panel-card` mixin (`margin`/`padding` internal to one `@include`d-6+-times shared abstraction —
+  splitting it to utility classes at every consumer would fragment a working pattern into two
+  mechanisms for no benefit, and its values like `2rem` don't need $spacers-map matching since
+  they're not scattered hand-rolled duplicates, just one shared definition); (2) `_trail-list.scss`'s
+  `.trail-list__item` (`gap: 0.75rem`, `padding: 0.4rem 0` — neither value is on the $spacers scale
+  at all, genuinely bespoke to this row's own visual rhythm, not a candidate for extending the
+  `$spacers` map since it's a one-off, not a reusable app-wide step). Verified every migrated value
+  live via `getComputedStyle` (not just visually) — computed pixel values matched the original rem
+  values exactly at every checked site (`trail-list__content`, `plan-summary__hero`,
+  `plan-chat__message`, `plan-setup__trails-legend`), confirming the utility-class swap was
+  pixel-perfect, not just visually close. No horizontal overflow at 375px mobile width. Lint/build/
+  test all green.
   **Design direction: "Trail journal / mapa turystyczna"** (confirmed 2026-07-21,
   supersedes the earlier "Trail & earth" palette) — a full app-wide redesign pass, prompted by user
   feedback that the growing number of components had started to look generic/thrown-together rather

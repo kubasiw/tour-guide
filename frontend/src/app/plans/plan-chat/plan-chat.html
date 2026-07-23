@@ -25,7 +25,7 @@
         <div class="plan-chat__messages mb-2">
           @for (message of messages(); track $index) {
             <p
-              class="plan-chat__message mb-2"
+              class="plan-chat__message py-2 mb-2"
               [class.plan-chat__message--user]="message.role === 'user'"
               [class.plan-chat__message--assistant]="message.role === 'assistant'"
             >

@@ -14,7 +14,7 @@
       @for (item of orderedItems(); track item.id; let i = $index) {
         <li class="trail-list__item position-relative" cdkDrag>
           <span class="trail-list__marker position-relative z-1">{{ i + 1 }}</span>
-          <div class="trail-list__content">
+          <div class="trail-list__content py-2 gap-2">
             <i
               class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary"
               cdkDragHandle

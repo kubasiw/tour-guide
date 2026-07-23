@@ -33,10 +33,14 @@
 // gradient, per this app's "flat surfaces" rule. Falls back to `transparent`
 // (i.e. plain page background) when there's no theme yet — anonymous users
 // or before the AI description has loaded.
+// Horizontal padding (1.5rem) lives as a `px-4` utility class in the
+// template — the vertical 1.25rem has no matching Bootstrap step, so it
+// stays as the one genuinely custom half of this rule.
 .plan-summary__hero {
   background-color: color-mix(in srgb, var(--theme-color, transparent) 16%, var(--color-page-bg));
   border-radius: 0.6rem;
-  padding: 1.25rem 1.5rem;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
 }
 
 .plan-summary__theme-tag {

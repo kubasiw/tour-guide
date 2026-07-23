@@ -39,8 +39,11 @@
   min-height: 4rem;
 }
 
+// Vertical padding (0.5rem) lives as a `py-2` utility class in the template
+// — the horizontal 0.75rem has no matching Bootstrap step, so it stays here.
 .plan-chat__message {
-  padding: 0.5rem 0.75rem;
+  padding-left: 0.75rem;
+  padding-right: 0.75rem;
   border-radius: v.$border-radius;
   max-width: 85%;
 }

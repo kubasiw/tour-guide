@@ -1,6 +1,6 @@
 @switch (variant()) {
   @case ('skeleton') {
-    <div class="loader loader--skeleton" role="status" aria-label="Loading">
+    <div class="loader loader--skeleton gap-2" role="status" aria-label="Loading">
       @for (row of skeletonRows(); track row) {
         <div class="loader__skeleton-row"></div>
       }
@@ -14,7 +14,7 @@
     </div>
   }
   @default {
-    <div class="loader loader--spinner" role="status" aria-label="Loading">
+    <div class="loader loader--spinner p-2" role="status" aria-label="Loading">
       <div class="loader__spinner"></div>
     </div>
   }

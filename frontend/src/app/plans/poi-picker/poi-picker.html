@@ -10,10 +10,10 @@
   @if (orderedItems().length === 0) {
     <p class="text-body-secondary">Wybierz miejsca poniżej, aby dodać je do planu.</p>
   } @else {
-    <ol class="trail-list mb-4" cdkDropList (cdkDropListDropped)="onDrop($event)">
+    <ol class="trail-list position-relative mb-4" cdkDropList (cdkDropListDropped)="onDrop($event)">
       @for (item of orderedItems(); track item.id; let i = $index) {
-        <li class="trail-list__item" cdkDrag>
-          <span class="trail-list__marker">{{ i + 1 }}</span>
+        <li class="trail-list__item position-relative" cdkDrag>
+          <span class="trail-list__marker position-relative z-1">{{ i + 1 }}</span>
           <div class="trail-list__content">
             <i
               class="bi bi-grip-vertical plan-item-row__handle fs-5 text-body-secondary"
@@ -101,6 +101,12 @@
     <app-plan-chat [planId]="planId()" (itemsChanged)="items.reload()" />
   }
 
+  @if (descriptionError(); as message) {
+    <ngb-alert type="danger" class="small py-2" [dismissible]="false">
+      {{ message }}
+    </ngb-alert>
+  }
+
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h2 class="h5 mb-0">Miejsca</h2>
     <div class="btn-group" role="group" aria-label="Widok miejsc">
@@ -151,8 +157,12 @@
               [poi]="poi"
               [selected]="isSelected(poi)"
               [hovered]="hoveredPoiId() === poi.id"
+              [aiDescription]="descriptionFor(poi)"
+              [showDescriptionAction]="authService.isAuthenticated()"
+              [descriptionLoading]="isGeneratingDescription(poi)"
               (toggled)="toggle(poi)"
               (hoverChange)="hoveredPoiId.set($event ? poi.id : null)"
+              (descriptionRequested)="generateDescription(poi)"
             />
           </div>
         }
@@ -175,8 +185,12 @@
                   [poi]="poi"
                   [selected]="isSelected(poi)"
                   [hovered]="hoveredPoiId() === poi.id"
+                  [aiDescription]="descriptionFor(poi)"
+                  [showDescriptionAction]="authService.isAuthenticated()"
+                  [descriptionLoading]="isGeneratingDescription(poi)"
                   (toggled)="toggle(poi)"
                   (hoverChange)="hoveredPoiId.set($event ? poi.id : null)"
+                  (descriptionRequested)="generateDescription(poi)"
                 />
               </div>
             }

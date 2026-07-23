@@ -208,6 +208,152 @@ is complete; work now moves to "Beyond MVP" below.
    only route to meaningful coverage. Not built yet — still needs its own design pass (e.g. generate
    lazily on first selection vs. a batch job, and how it interacts with the existing
    24-tiles-per-render cost concern for tiles that were never AI-described yet).
+   **✅ Built (2026-07-22):** confirmed via `AskUserQuestion` — trigger is a small "Wygeneruj opis"
+   action on the tile itself, explicitly clicked by the user, never auto-fired in bulk for a whole
+   candidates render (the concrete answer to the 24-tiles-per-render cost concern above). `Poi`
+   gained `aiDescription String?` / `aiDescriptionGeneratedAt DateTime?` (new migration);
+   `AiService.generatePoiDescription(poi)` is the shortest/cheapest of the three AI prompts in this
+   app so far (one honest sentence, `POI_DESCRIPTION_MAX_TOKENS = 80` — a single POI has far less
+   known data than a whole area, just name + type, so there's less to say and less anti-hallucination
+   surface than the area description/narration prompts). `PoiService.getOrGenerateDescription(id)`
+   is the same cache-forever-or-generate pattern as `PlansService.getAiDescription` — returns the
+   cached value if present, else generates, persists, and returns; `GET /pois/:id/description` is a
+   hard `JwtAuthGuard` endpoint, same AI-cost-gating precedent as every other AI feature (area
+   description, narration, chat). Already-cached descriptions are returned **for free** as part of
+   the existing `Poi` DTO on `GET /pois` and `GET /plans/:id/candidates` (added `aiDescription` to
+   `poi.types.ts`'s `Poi` interface and both `toPoi`/`toPlanItemWithPoi` mappings) — no extra request
+   needed just to display one a second time, only the first generation costs an LLM call. Frontend:
+   `PoiTile`'s root changed from a `<button>` to a `<div role="button" tabindex="0">` — a real
+   `<button>` can't contain another nested `<button>` (invalid HTML), and the new description action
+   needed to be a proper button distinct from the tile's own click-to-toggle handler
+   (`$event.stopPropagation()` on the action button keeps clicking it from also toggling selection).
+   New `core/poi.service.ts` (mirrors `GeocodingService`'s shape — a small dedicated service for a
+   POI-domain call, not folded into `PlanService`, matching the backend's own `PoiModule`/
+   `PlansModule` separation). `PoiPicker` holds the freshly-generated overrides locally
+   (`generatedDescriptions: Record<string, string>`, `generatingDescriptionIds: ReadonlySet<string>`)
+   since the `candidates` resource itself isn't mutated in place when a description is generated
+   after the initial fetch — `descriptionFor(poi)` resolves `poi.aiDescription ?? override ?? null`.
+   `showDescriptionAction` is passed down as a plain input bound to `authService.isAuthenticated()`
+   at the call site, keeping `PoiTile` itself a pure dumb component (no injected services). The
+   description action button follows the same `.btn-loading` fixed-size pattern as every other
+   loading button in the app. **Gotcha hit during wiring:** `poi-picker.html` renders `<app-poi-tile>`
+   from two different template branches (the plain grid view and the split view's grid half), each
+   with different indentation — an `Edit` with `replace_all: true` only matched the exact-whitespace
+   grid-view occurrence and silently left the split-view one on the old bindings (confirmed via
+   `window.ng.getComponent()` showing `showDescriptionAction()` return `false` there even though the
+   parent's `authService.isAuthenticated()` was `true`) — a reminder that `replace_all` matches literal
+   text, not semantically-equivalent-but-differently-indented blocks; fixed with a second, separately
+   whitespace-matched edit. **Verified end-to-end:** live curl confirmed a real AI-generated
+   description, honestly grounded in just the POI's name/type (e.g. a monument's pomnik description
+   mentioning Copernicus by name, correctly not inventing hours/ratings); a repeat call returned in
+   ~60ms (cached, no second LLM round-trip); unauthenticated request → 401; unknown id → 404. Browser:
+   logged in, clicked a tile's "Wygeneruj opis" action, description appeared and the action button was
+   replaced by it on that specific tile only (others unaffected); confirmed clicking the tile body
+   elsewhere still toggles selection normally (the `stopPropagation` didn't break the tile's own click
+   handler); confirmed already-cached descriptions for other POIs come back through a plain
+   `GET /pois` bbox query with zero extra calls; no horizontal overflow at 375px mobile width.
+   **Layout/UX polish, same day, real user feedback:** `PoiTile` gained a fixed `height: 15rem`
+   (was `h-100`, matching-row-height only) so every tile in the grid is the same size regardless of
+   description length — overflow scrolls inside the tile instead of growing it (`min-height: 0` on
+   both the flex `card-body` and the description wrap, the standard flex-child-needs-explicit-
+   shrink-permission fix for making a flex child scrollable inside a fixed-height flex parent).
+   Icon + name moved onto one row (`d-flex align-items-center gap-2`, icon `fs-4` down from `fs-2`
+   to fit inline) with the name still `text-truncate`d — needed a `min-width: 0` on the name element
+   itself, since a flex item's default content-based minimum width otherwise defeats
+   `text-truncate`'s ellipsis regardless of the CSS being technically correct. **Real bug fixed:**
+   a description longer than 2 lines was being clamped by CSS `-webkit-line-clamp` alone with no way
+   to read the rest — reads as "incomplete, ends in an ellipsis, can't be expanded" even though the
+   underlying `aiDescription` text itself was complete. Fixed with a real toggle:
+   `descriptionExpanded` signal + a length-based `descriptionIsLong()` heuristic
+   (`DESCRIPTION_EXPAND_THRESHOLD = 90` chars — deliberately approximate rather than measuring
+   actual rendered DOM overflow via `ResizeObserver`, same "tunable constant over precise
+   measurement" precedent as `estimateReverseZoom`) that shows a "więcej..."/"zwiń" link only when
+   the description is actually long enough to need it; the clamp class
+   (`.poi-tile__description--clamped`) is toggled off when expanded, and the now-scrollable wrapper
+   handles anything that still doesn't fit in the fixed tile height. **Verified live:** a real
+   168-char generated description correctly flagged as long, clamped by default with the toggle
+   showing "więcej...", expands to full text on click (toggle flips to "zwiń", tile height stays
+   240px, wrapper genuinely scrollable per `scrollHeight > clientHeight`), and collapses back
+   cleanly on a second click; icon+name confirmed on the same row via `getBoundingClientRect()`;
+   no horizontal overflow at 375px mobile width.
+   **Second polish pass, same day, real user feedback:** the 15rem tile from the first pass still
+   read as mostly dead space — a floating green "wygeneruj opis" link sitting right after the name
+   row with a big gap below it. Cut the tile height to `9rem` (~40% smaller) and moved that action
+   (and the "więcej..."/"zwiń" toggle, mutually exclusive with it) to the bottom-right corner via
+   plain flexbox (`mt-auto align-self-end` on the button, inside the already-`d-flex flex-column`
+   card-body) rather than `position: absolute` — deliberately chosen so it can never overlap the
+   description's last line, since it always sits in normal flow directly below it, pushed to the
+   tile's bottom edge by the flex column's remaining space. Clamp bumped from 2 to 3 lines
+   (`DESCRIPTION_EXPAND_THRESHOLD` raised from 90 to 130 chars to match). **Verified live (real
+   screenshot was misleading here — this environment's screenshot renderer showed the button on the
+   bottom-*left*, but `getBoundingClientRect()` proved it's genuinely ~9.6px from the right edge,
+   matching the card's own padding, both before and after expanding — trusted the DOM measurement
+   over the screenshot, per this project's own established precedent for this class of rendering
+   quirk):** fixed tile height holds at 144px (9rem) whether the description is absent, clamped, or
+   expanded; a real 147-char description correctly triggers the toggle, and expanding it makes the
+   description-wrap genuinely scrollable (`scrollHeight 147 > clientHeight 66`) without the tile
+   itself growing; no horizontal overflow at 375px mobile width.
+   **Third pass, same day, real user feedback: another 20% off the tile height.** `9rem` → `7.2rem`
+   (115.2px) — a direct, literal ask, not a re-derived estimate. Verified live that icon+name, the
+   meta line, and a 3-line-clamped description all still fit, the bottom-right toggle still sits at
+   its same ~9.6px offset from both edges, and expanding a long description still keeps the tile at
+   exactly 115.2px (the description-wrap scrolls instead, same mechanism as the pass above).
+   **✅ Built (2026-07-22): basic address (street + house number) on the meta line.** User asked
+   whether address data is available at all — checked real coverage first, same "verify, don't
+   assume" precedent as the AI-description sparsity check: **34% of cached POIs (1263/3752) have
+   both `addr:street` and `addr:housenumber`** in their already-fetched Overpass tags — sparse, but
+   common enough to be worth surfacing (unlike the 2.6%/3.7% `description`/`wikipedia` tag coverage
+   that ruled out an OSM-first approach for descriptions). No new migration/column needed — the raw
+   tags are already stored in `Poi.sourceData` from ingestion; a new `extractAddress(sourceData)`
+   pure function (`backend/src/poi/poi.types.ts`) derives `"<street> <housenumber>"` (or just the
+   street if no housenumber, or `null` if neither) on read, reused by both `PoiService.toPoi` and
+   `PlanGeneratorService.toPlanItemWithPoi` (the same two mapping sites `aiDescription` already had
+   to be added to). **Explicit user constraint: don't grow the fixed tile height for this.** Since
+   the tile already had exactly one line reserved for opening hours right under the name, address
+   and hours now share that same single line instead of getting a second one — `PoiTile.metaLine`
+   joins whichever of `poi().address`/`poi().openingHours` are present with `" · "`, still one
+   `text-truncate`d line. Verified live: a POI with only an address shows just the address; one with
+   both shows `"Rynek Główny 22 · Mo-Su 12:00-23:00"`; tile height stays exactly 115.2px in both
+   cases and at both mobile (375px) and desktop width, no horizontal overflow.
+   **Repositioned same day, real user feedback:** the meta line's own in-flow row (with a full
+   `mt-1` margin below the name) read as loosely floating rather than tightly tied to the name it
+   describes. Wrapped the icon+name row in a new `.poi-tile__header` (`position: relative`) and
+   made `.poi-tile__meta` `position: absolute; bottom: 0; right: 0;` inside it, at a smaller
+   `0.7rem` (was the default `.small` ~0.8rem) — tucked into the name row's own bottom-right corner
+   instead of a separate row below it. `.poi-tile__header` reserves a small `padding-bottom` sized
+   to the meta line's own height, so the description that follows in normal flow doesn't start too
+   early and get covered by the absolutely-positioned meta line hanging below the name. Also freed
+   up a full row of vertical space for the description area, which auto-grows into it (`flex: 1 1
+   auto` on `.poi-tile__description-wrap`, unchanged). Verified live via `getBoundingClientRect()`:
+   the meta line no longer overlaps the name (a real check, not just visual), the gap between them
+   is ~1px (down from a full row+margin), font is genuinely 11.2px, and the tile still holds at
+   exactly 115.2px at both mobile and desktop width.
+   **Corrected same day, real user feedback: the meta line's right edge should match the *name's*
+   own right edge, not the tile's.** The previous pass anchored `.poi-tile__meta` to
+   `.poi-tile__header` (spanning the tile's full width), so it lined up with the tile's right edge
+   regardless of how short the name was — not what was asked. Fixed by moving `.poi-tile__meta`
+   inside a new `.poi-tile__name-wrap` (the actual positioning context) instead: flex items default
+   to shrink-to-fit width when no flex-grow is set, so this wrapper is naturally exactly as wide as
+   the rendered name (short or ellipsis-truncated-long alike) — anchoring the meta line's
+   `right: 0` to *that* wrapper, instead of the wider header, makes it track the name's own edge.
+   Verified live across multiple real tiles via `getBoundingClientRect()`
+   (`nameRect.right - metaRect.right`, exactly `0` in every sampled case, not just visually close).
+   **Real bug found and fixed during this same verification pass:** capping `.poi-tile__meta` with
+   a fixed `max-width` (to stop a long address from running off the tile) does NOT stop it from
+   overflowing the tile's own left edge when anchored to a *short* name — the box still renders at
+   its max-width, just starting further left. Caught live: a "Wentzl" tile combining a short name
+   with a long opening-hours string extended the meta box ~48px past the tile's own left edge
+   (`metaLeft: -48px` while `tileLeft: 12px`) — a real, not theoretical, overflow. Fixed with
+   `overflow: hidden` on `.poi-tile` itself (the whole card) as a safety clip — simpler and more
+   robust than trying to precisely compute a per-tile max-width. Confirmed this actually clips the
+   paint, not just the layout box: `getBoundingClientRect()` still reports the same off-tile
+   position after the fix (as expected — that property ignores an ancestor's `overflow`), but
+   `document.elementFromPoint()` probed 10px left of the tile's own edge resolves to nothing there
+   post-fix — the previously-overflowing text is genuinely not painting outside the card anymore,
+   not just theoretically clipped. Accepted trade-off: an address+hours combo this long on this
+   short a name may still read as visually cut off, but it's contained within the tile rather than
+   spilling into neighboring grid cells. No horizontal page overflow at either mobile (375px) or
+   desktop width.
    **Idea captured, not built (2026-07-20):** a small map preview on every pre-generation screen
    (`activity-selector`, `trip-details`), not just `area-picker` — user's own framing was that this
    could later double as a way to show selected attractions/trails once `PlanItem`s carry real
@@ -1165,6 +1311,58 @@ Frontend-specific:
   local override (e.g. `trip-details-card`'s `margin-top: 0`, overriding what `panel-card` sets) is
   fine when a specific layout genuinely needs an exception — that's not a sign the scale itself
   needs replacing, just that one spot deviates from the shared card pattern on purpose.
+  **Positioning convention (2026-07-22):** same rule, applied to `position`/offsets — Bootstrap
+  ships `.position-{static,relative,absolute,fixed,sticky}` plus `.top-{0,50,100}`,
+  `.bottom-{0,50,100}`, `.start-{0,50,100}` (= `left`), `.end-{0,50,100}` (= `right`), and
+  `.translate-middle{,-x,-y}` (confirmed by reading the installed `bootstrap/scss/_utilities.scss`
+  and `_variables.scss` directly, not assumed — `$position-values` is only `0/50%/100%`, so this
+  covers exact-edge and dead-center cases, not arbitrary offsets). Audited every component
+  `.scss` file for a bare `position:` declaration and moved what Bootstrap's scale actually
+  covers to inline utility classes in the template (`poi-tile`, `plan-setup`, `_trail-list.scss`
+  usages in `poi-picker`/`plan-summary`, `plan-chat`) — e.g. `.plan-setup__search`'s `position:
+  absolute; left: 50%; transform: translateX(-50%);` became `position-absolute start-50
+  translate-middle-x` in the template, leaving only its non-scale `top: 1rem` behind in scss.
+  Custom offset values with no Bootstrap equivalent (`top: 0.5rem`, `right: 1.5rem`, non-Bootstrap
+  `z-index: 1039/1040` deliberately above `.sticky-top`'s 1020, ...) stay in scss — the utility
+  scale genuinely doesn't cover them, this isn't a partial/inconsistent migration. **Two real
+  exceptions kept, not migrated:** (1) `_trail-list.scss`'s `.trail-list::before` — a
+  pseudo-element has no DOM node, so its `position: absolute` can never move to a template class,
+  full stop; (2) `_button-loading.scss`'s `.btn-loading`/`.btn-loading__spinner` — deliberately
+  left alone since `.btn-loading` is applied *conditionally* (`[class.btn-loading]="loading()"`)
+  across 11+ button templates precisely so each template only has to remember one toggled class
+  for the whole loading-button behavior; splitting `position: relative` out to a permanent static
+  utility class on every one of those buttons would fragment that single cohesive abstraction into
+  two mechanisms for no real benefit, working against the DRY reason the shared partial exists.
+  Verified end-to-end after the migration: `poi-tile`'s badge/meta positioning, `plan-setup`'s
+  map-relative search centering, `trail-list`'s marker-over-connector-line stacking, and
+  `plan-chat`'s fixed FAB/panel all still resolve to the correct computed `position` (confirmed via
+  `getComputedStyle`, not just visually) at both mobile (375px) and desktop width, plus lint/build/
+  test all green on the whole batch.
+  **Same pass, real user feedback: the gap between a POI tile's name and its address (see the
+  AI-description entry earlier in this file's roadmap) was still visible even after right-edge-
+  aligning it to the name.**
+  A font's line box has built-in leading above/below the glyphs, so `top: 100%` (flush against the
+  name box's own bottom edge) still reads as a gap. Fixed with a small `margin-top: -0.2rem` on
+  `.poi-tile__meta` — a value with no Bootstrap utility equivalent, so it stays in scss. Verified
+  live: the two now sit visibly tight together with no glyph overlap (confirmed via a real
+  screenshot, not just bounding-box math, since a small negative `metaRect.top - nameRect.bottom`
+  doesn't by itself prove the glyphs don't visually collide).
+  **Same pass, real user feedback: `.poi-tile__header`'s `padding-bottom: 0.85rem` was exactly the
+  kind of hand-rolled value the spacing convention above warns against.** Replaced with a plain
+  `pb-2` (Bootstrap's own `$spacers` scale, 0.5rem) in the template, removing the scss rule
+  entirely — `.poi-tile__description-wrap` already has `flex: 1 1 auto`, so it automatically grew
+  into the space freed by the smaller reserved padding; no separate height adjustment was needed to
+  make the description reach the same distance down. Confirmed live (`getBoundingClientRect()`)
+  that the tighter padding still leaves the meta line and the description/generate-button below it
+  non-overlapping in both states (with a generated description, and before one exists yet), tile
+  height still exactly 115.2px, no horizontal overflow at 375px. **Broader ask, deferred by
+  agreement:** the user also asked whether *every* hand-rolled scss padding/margin value across the
+  app should be swept and replaced with Bootstrap's `$spacers`-scale utility classes (extending the
+  `$spacers` map in `_variables.scss` for any custom step that doesn't already exist, per the
+  spacing convention above) — agreed this is a good direction (it's already the documented
+  principle, just not yet applied everywhere), but scoped as its own future pass rather than folded
+  into this one small fix, same reasoning as the `position` utility-class audit two entries above:
+  a full-codebase sweep is real, separate work, not a drive-by addition to an unrelated tweak.
   **Design direction: "Trail journal / mapa turystyczna"** (confirmed 2026-07-21,
   supersedes the earlier "Trail & earth" palette) — a full app-wide redesign pass, prompted by user
   feedback that the growing number of components had started to look generic/thrown-together rather

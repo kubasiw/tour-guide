@@ -8,7 +8,7 @@ import { Prisma } from '@prisma/client';
 import { AiService } from '../ai/ai.service';
 import { areaBoundingBox } from '../plans/area.type';
 import { PlansService } from '../plans/plans.service';
-import { Poi, PoiType } from '../poi/poi.types';
+import { Poi, PoiType, extractAddress } from '../poi/poi.types';
 import { PoiService } from '../poi/poi.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ACTIVITY_TO_POI_TYPES } from './activity-poi-mapping';
@@ -211,6 +211,8 @@ export class PlanGeneratorService {
         lat: item.poi.lat,
         lng: item.poi.lng,
         openingHours: item.poi.openingHours,
+        aiDescription: item.poi.aiDescription,
+        address: extractAddress(item.poi.sourceData),
       },
     };
   }

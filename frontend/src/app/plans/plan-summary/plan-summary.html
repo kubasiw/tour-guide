@@ -96,10 +96,10 @@
       } @else {
         <div class="row g-3">
           <div class="col-12 col-lg-6">
-            <ol class="trail-list mb-4">
+            <ol class="trail-list position-relative mb-4">
               @for (item of loadedItems; track item.id; let i = $index) {
-                <li class="trail-list__item">
-                  <span class="trail-list__marker">{{ i + 1 }}</span>
+                <li class="trail-list__item position-relative">
+                  <span class="trail-list__marker position-relative z-1">{{ i + 1 }}</span>
                   <div class="trail-list__content">
                     <span
                       class="plan-item-row__icon rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"

@@ -1,23 +1,66 @@
-<button
-  type="button"
-  class="poi-tile card h-100 text-start"
+<div
+  class="poi-tile card text-start"
   [class]="colorClass()"
   [class.poi-tile--selected]="selected()"
   [class.poi-tile--hovered]="hovered()"
+  role="button"
+  tabindex="0"
   (click)="toggled.emit()"
+  (keydown.enter)="toggled.emit()"
   (mouseenter)="hoverChange.emit(true)"
   (mouseleave)="hoverChange.emit(false)"
 >
-  <div class="card-body p-2 position-relative">
+  <div class="card-body p-2 position-relative d-flex flex-column">
     @if (selected()) {
-      <span class="poi-tile__badge badge bg-primary">
+      <span class="poi-tile__badge position-absolute badge bg-primary">
         <i class="bi bi-check-lg"></i>
       </span>
     }
-    <i class="bi {{ icon() }} fs-2"></i>
-    <div class="fw-semibold text-truncate mt-1">{{ poi().name }}</div>
-    @if (poi().openingHours) {
-      <div class="small text-body-secondary text-truncate">{{ poi().openingHours }}</div>
+    <div class="poi-tile__header pb-2">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi {{ icon() }} fs-4 flex-shrink-0"></i>
+        <div class="poi-tile__name-wrap position-relative">
+          <div class="poi-tile__name fw-semibold text-truncate">{{ poi().name }}</div>
+          @if (metaLine()) {
+            <div class="poi-tile__meta position-absolute top-100 end-0 text-body-secondary text-truncate">
+              {{ metaLine() }}
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (aiDescription(); as text) {
+      <div class="poi-tile__description-wrap mt-1">
+        <p
+          class="poi-tile__description small text-body-secondary mb-0"
+          [class.poi-tile__description--clamped]="!descriptionExpanded()"
+        >
+          {{ text }}
+        </p>
+      </div>
+      @if (descriptionIsLong()) {
+        <button
+          type="button"
+          class="poi-tile__expand-toggle btn btn-link btn-sm p-0 mt-auto align-self-end"
+          (click)="$event.stopPropagation(); toggleDescriptionExpanded()"
+        >
+          {{ descriptionExpanded() ? 'zwiń' : 'więcej...' }}
+        </button>
+      }
+    } @else if (showDescriptionAction()) {
+      <button
+        type="button"
+        class="poi-tile__description-action btn btn-link btn-sm p-0 mt-auto align-self-end"
+        [class.btn-loading]="descriptionLoading()"
+        [disabled]="descriptionLoading()"
+        (click)="$event.stopPropagation(); descriptionRequested.emit()"
+      >
+        <span class="btn-loading__label"><i class="bi bi-stars me-1"></i>Wygeneruj opis</span>
+        @if (descriptionLoading()) {
+          <app-loader variant="spinner" class="btn-loading__spinner" />
+        }
+      </button>
     }
   </div>
-</button>
+</div>

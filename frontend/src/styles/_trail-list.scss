@@ -7,8 +7,11 @@
 // Global (not a component `@use`d partial) since both `poi-picker` and
 // `plan-summary` need the identical classes — kept in one place rather than
 // duplicating the same block across two component stylesheets.
+// `position: relative` (needed as the positioning context for `::before`
+// below) lives as a Bootstrap utility class at both usage sites instead of
+// here — a pseudo-element itself has no DOM node, so it can never move out
+// of CSS, but the plain `position: relative` its parent needs can.
 .trail-list {
-  position: relative;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -27,17 +30,19 @@
   opacity: 0.4;
 }
 
+// `position: relative` also lives as a utility class at both usage sites —
+// needed so each item paints above the connector line drawn behind it.
 .trail-list__item {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 0.75rem;
   padding: 0.4rem 0;
 }
 
+// `position: relative; z-index: 1;` (needed so the marker's own background
+// paints over the connector line behind it) live as `position-relative z-1`
+// utility classes at both usage sites instead of here.
 .trail-list__marker {
-  position: relative;
-  z-index: 1;
   flex-shrink: 0;
   width: 30px;
   height: 30px;

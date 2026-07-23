@@ -11,12 +11,12 @@
       Zaznacz obszar na mapie, wybierz co Cię interesuje i podaj termin pobytu.
     </p>
 
-    <div class="plan-setup__map-wrap">
+    <div class="plan-setup__map-wrap position-relative">
       <div #mapContainer class="plan-setup__map"></div>
 
       <input
         type="search"
-        class="plan-setup__search form-control"
+        class="plan-setup__search position-absolute start-50 translate-middle-x form-control"
         placeholder="Szukaj miejsca, np. Karkonosze albo ul. Gdańska"
         aria-label="Szukaj miejsca na mapie"
         [formControl]="searchControl"

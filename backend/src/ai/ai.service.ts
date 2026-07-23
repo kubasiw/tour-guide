@@ -29,6 +29,18 @@ const NARRATION_SYSTEM_PROMPT =
   'wynika z ich nazwy i typu — nie zmyślaj godzin otwarcia, ocen, historii itp. Bez nagłówków, bez ' +
   'list, sam tekst.';
 
+// A single POI has far less known data than a whole area (just name + type),
+// so this is deliberately the shortest prompt/budget of the three — one
+// honest sentence, not a padded-out paragraph pretending to know more.
+const POI_DESCRIPTION_MAX_TOKENS = 80;
+
+const POI_DESCRIPTION_SYSTEM_PROMPT =
+  'Piszesz bardzo krótkie opisy pojedynczych miejsc dla aplikacji turystycznej. Dostajesz tylko ' +
+  'nazwę i typ miejsca (np. restauracja, zabytek, szlak). Napisz dokładnie jedno zdanie po polsku ' +
+  'o ogólnym charakterze tego typu miejsca, naturalnie odnosząc się do jego nazwy. Nie wymyślaj ' +
+  'żadnych konkretnych faktów, ocen, godzin otwarcia ani historii, których nie znasz na pewno — ' +
+  'pisz ogólnie o charakterze tego typu miejsca. Sam tekst, bez nagłówków i cudzysłowów.';
+
 @Injectable()
 export class AiService {
   private readonly client: Anthropic;
@@ -91,6 +103,31 @@ export class AiService {
       return block.text.trim();
     } catch {
       throw new BadGatewayException('Failed to generate plan narration');
+    }
+  }
+
+  public async generatePoiDescription(poi: {
+    name: string;
+    type: string;
+  }): Promise<string> {
+    try {
+      const response = await this.client.messages.create({
+        model: MODEL,
+        max_tokens: POI_DESCRIPTION_MAX_TOKENS,
+        system: POI_DESCRIPTION_SYSTEM_PROMPT,
+        messages: [
+          { role: 'user', content: `Miejsce: ${poi.name} (${poi.type})` },
+        ],
+      });
+
+      const block = response.content[0];
+      if (block?.type !== 'text') {
+        throw new Error('Unexpected response content type from Claude API');
+      }
+
+      return block.text.trim();
+    } catch {
+      throw new BadGatewayException('Failed to generate POI description');
     }
   }
 

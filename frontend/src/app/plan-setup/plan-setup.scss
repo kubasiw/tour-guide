@@ -5,8 +5,8 @@
 // replaces the old area-picker's full-viewport-height flex host: this is a
 // normal scrolling page now, with sections below the map, not an edge-to-edge
 // map with everything else floating on top of it.
+// `position: relative` lives as a Bootstrap utility class in the template.
 .plan-setup__map-wrap {
-  position: relative;
   height: 420px;
   border-radius: v.$border-radius;
   overflow: hidden;
@@ -20,11 +20,12 @@
 // Floating search overlay — centered pill sitting on top of the map,
 // deliberately narrow so it doesn't collide with Leaflet's own top-left
 // zoom control + draw toolbar (both live in that one corner).
+// `position: absolute`, `left: 50%`, and `transform: translateX(-50%)` all
+// live as Bootstrap utility classes in the template (`position-absolute
+// start-50 translate-middle-x`) — only `top: 1rem` has no matching utility
+// (Bootstrap's position scale is 0/50/100% only), so it stays here.
 .plan-setup__search {
-  position: absolute;
   top: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 1000;
   width: calc(100% - 2rem);
   max-width: 420px;

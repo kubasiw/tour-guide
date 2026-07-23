@@ -6,6 +6,7 @@ import { NgbAlert } from '@ng-bootstrap/ng-bootstrap';
 import { AuthService } from '../../auth/auth.service';
 import { extractErrorMessage } from '../../core/http-error';
 import { POI_TYPE_COLORS, POI_TYPE_ICONS, Poi } from '../../core/poi.model';
+import { PoiService } from '../../core/poi.service';
 import { Loader } from '../../shared/loader/loader';
 import { PlanItemWithPoi } from '../plan-item.model';
 import { PlanChat } from '../plan-chat/plan-chat';
@@ -25,6 +26,7 @@ export class PoiPicker {
   public readonly planStatus = input<string>();
 
   private readonly planService = inject(PlanService);
+  private readonly poiService = inject(PoiService);
   private readonly router = inject(Router);
   protected readonly authService = inject(AuthService);
   protected readonly planStatusFinal = PLAN_STATUS_FINAL;
@@ -63,6 +65,13 @@ export class PoiPicker {
   protected readonly poiTypeIcons = POI_TYPE_ICONS;
   protected readonly poiTypeColors = POI_TYPE_COLORS;
 
+  // Freshly-generated descriptions, keyed by POI id — the `candidates`
+  // resource itself isn't mutated in place when one is generated after the
+  // initial fetch, so this is a local overlay on top of it.
+  protected readonly generatedDescriptions = signal<Record<string, string>>({});
+  protected readonly generatingDescriptionIds = signal<ReadonlySet<string>>(new Set());
+  protected readonly descriptionError = signal<string | null>(null);
+
   public constructor() {
     effect(() => {
       const loaded = this.items.value();
@@ -74,6 +83,46 @@ export class PoiPicker {
 
   protected isSelected(poi: Poi): boolean {
     return this.selectedPoiIds().has(poi.id);
+  }
+
+  protected descriptionFor(poi: Poi): string | null {
+    return poi.aiDescription ?? this.generatedDescriptions()[poi.id] ?? null;
+  }
+
+  protected isGeneratingDescription(poi: Poi): boolean {
+    return this.generatingDescriptionIds().has(poi.id);
+  }
+
+  // Explicit, per-tile trigger only — never called in bulk for a whole
+  // candidates list (see PoiService.getOrGenerateDescription's own comment
+  // for why: up to MAX_CANDIDATES=24 tiles per render, so an auto-generate-
+  // on-load approach would mean up to 24 LLM calls per page view).
+  protected generateDescription(poi: Poi): void {
+    if (this.isGeneratingDescription(poi)) {
+      return;
+    }
+
+    this.descriptionError.set(null);
+    this.generatingDescriptionIds.update((ids) => new Set(ids).add(poi.id));
+
+    this.poiService.getDescription(poi.id).subscribe({
+      next: ({ description }) => {
+        this.generatingDescriptionIds.update((ids) => {
+          const next = new Set(ids);
+          next.delete(poi.id);
+          return next;
+        });
+        this.generatedDescriptions.update((map) => ({ ...map, [poi.id]: description }));
+      },
+      error: (err: unknown) => {
+        this.generatingDescriptionIds.update((ids) => {
+          const next = new Set(ids);
+          next.delete(poi.id);
+          return next;
+        });
+        this.descriptionError.set(extractErrorMessage(err));
+      },
+    });
   }
 
   protected toggle(poi: Poi): void {

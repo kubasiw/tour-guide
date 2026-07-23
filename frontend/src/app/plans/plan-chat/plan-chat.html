@@ -1,6 +1,6 @@
 <button
   type="button"
-  class="plan-chat__fab btn btn-accent"
+  class="plan-chat__fab position-fixed btn btn-accent"
   [attr.aria-expanded]="open()"
   [attr.aria-label]="open() ? 'Zamknij asystenta AI' : 'Otwórz asystenta AI'"
   (click)="open.set(!open())"
@@ -9,7 +9,7 @@
 </button>
 
 @if (open()) {
-  <div class="plan-chat__panel card">
+  <div class="plan-chat__panel position-fixed card">
     <div class="card-header d-flex justify-content-between align-items-center py-2">
       <span class="fw-semibold small"><i class="bi bi-chat-dots me-1"></i>Asystent AI</span>
       <button

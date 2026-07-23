@@ -1,9 +1,14 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Poi as PoiRecord, Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GetPoisQueryDto } from './dto/get-pois-query.dto';
 import { OVERPASS_TAG_QUERIES } from './overpass-tags';
-import { Poi, PoiType } from './poi.types';
+import { Poi, PoiType, extractAddress } from './poi.types';
 
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 
@@ -21,7 +26,10 @@ interface OverpassResponse {
 
 @Injectable()
 export class PoiService {
-  public constructor(private readonly prisma: PrismaService) {}
+  public constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiService: AiService,
+  ) {}
 
   public async findInBoundingBox(bbox: GetPoisQueryDto): Promise<Poi[]> {
     const cached = await this.prisma.poi.findMany({
@@ -128,6 +136,41 @@ export class PoiService {
     return this.toPoi(saved);
   }
 
+  // Cache-forever, same precedent as `PlansService.getAiDescription` — a
+  // description is generated once per POI and reused across every plan/user
+  // that later selects that same POI, so cost amortizes over time. This is
+  // deliberately explicit-trigger (called only when a user clicks a specific
+  // tile's "generate" action), never fired in bulk for a whole candidates
+  // list — a naive "describe all 24 candidates on render" approach would
+  // mean up to 24 LLM calls per page load.
+  public async getOrGenerateDescription(
+    id: string,
+  ): Promise<{ description: string }> {
+    const record = await this.prisma.poi.findUnique({ where: { id } });
+    if (!record) {
+      throw new NotFoundException('POI not found');
+    }
+
+    if (record.aiDescription) {
+      return { description: record.aiDescription };
+    }
+
+    const description = await this.aiService.generatePoiDescription({
+      name: record.name,
+      type: record.type,
+    });
+
+    await this.prisma.poi.update({
+      where: { id },
+      data: {
+        aiDescription: description,
+        aiDescriptionGeneratedAt: new Date(),
+      },
+    });
+
+    return { description };
+  }
+
   private toPoi(record: PoiRecord): Poi {
     return {
       id: record.id,
@@ -137,6 +180,8 @@ export class PoiService {
       lat: record.lat,
       lng: record.lng,
       openingHours: record.openingHours,
+      aiDescription: record.aiDescription,
+      address: extractAddress(record.sourceData),
     };
   }
 }

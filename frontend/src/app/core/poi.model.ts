@@ -9,6 +9,8 @@ export interface Poi {
   lat: number;
   lng: number;
   openingHours: string | null;
+  aiDescription: string | null;
+  address: string | null;
 }
 
 export const POI_TYPE_ICONS: Record<PoiType, string> = {

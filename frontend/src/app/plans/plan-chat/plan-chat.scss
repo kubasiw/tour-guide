@@ -5,8 +5,10 @@
 // poi-picker) so the assistant is always reachable regardless of scroll
 // position, and never gets visually lost between other cards. z-index above
 // the sticky nav (Bootstrap's own .sticky-top is 1020).
+// `position: fixed` lives as a Bootstrap utility class in the template on
+// both of these — the offsets and z-index have no matching Bootstrap scale
+// (custom rem values, and above `.sticky-top`'s own 1020), so they stay here.
 .plan-chat__fab {
-  position: fixed;
   right: 1.5rem;
   bottom: 1.5rem;
   z-index: 1040;
@@ -21,7 +23,6 @@
 }
 
 .plan-chat__panel {
-  position: fixed;
   right: 1.5rem;
   bottom: 5.75rem;
   z-index: 1039;

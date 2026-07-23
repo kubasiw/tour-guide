@@ -1,5 +1,23 @@
 .poi-tile {
   width: 100%;
+  // Fixed (not just row-matched via h-100) — every tile in the grid is the
+  // same height regardless of description length; overflow inside scrolls
+  // instead of growing the card (see .poi-tile__description-wrap). Cut down
+  // from an earlier 15rem after real user feedback that the tile read as
+  // mostly empty space around a floating "Wygeneruj opis" link, then a
+  // further 20% off that first pass per follow-up feedback — this is sized
+  // to just fit icon+name, hours, and up to 3 lines of description.
+  height: 7.2rem;
+  // Safety clip for `.poi-tile__meta`: it's right-anchored to the name's own
+  // (often short) right edge and can extend left past the tile's own edge
+  // for a short name + long address/hours combo — confirmed live, a real
+  // overflow, not just theoretical (a short name paired with a long hours
+  // string extended ~48px past the tile's left edge). Capping its own
+  // max-width alone doesn't stop that, since the box still tries to render
+  // at that width; clipping the whole card is the simple, robust fix. The
+  // address may still read as visually cut off in that rare case — accepted,
+  // contained within the tile rather than spilling into neighboring cells.
+  overflow: hidden;
   cursor: pointer;
   border: 2px solid transparent;
   transition: border-color 0.15s ease;
@@ -9,6 +27,58 @@
   &:hover {
     border-color: var(--bs-border-color);
   }
+}
+
+// Lets the flex-column card-body's children shrink below their content size
+// — without this, a flex child (the description wrap) can't actually become
+// scrollable inside a fixed-height flex parent; a common flexbox+overflow gotcha.
+.poi-tile .card-body {
+  min-height: 0;
+}
+
+// `.poi-tile__header` needs no rule of its own anymore — the room it used to
+// reserve below the icon+name row (for the absolutely-positioned
+// `.poi-tile__meta` hanging beneath it) is now a plain `pb-2` in the
+// template (Bootstrap's own $spacers scale, 0.5rem) instead of a
+// hand-rolled rem value here — real user feedback (2026-07-22): reusing the
+// app's one spacing scale instead of eyeballing a value avoids exactly this
+// kind of component-to-component drift. `.poi-tile__description-wrap`
+// below automatically grows into whatever space shrinking this padding
+// freed up (`flex: 1 1 auto` already fills the flex column's remaining
+// height), so this alone was enough to both bring the description closer
+// *and* let it reach the same distance down — no separate height bump
+// needed.
+
+// `position: relative`/`position-absolute top-100 end-0` on this pair live
+// as Bootstrap utility classes directly in the template (not here) — see
+// the app-wide utility-classes-over-scss convention below. This wrapper is
+// deliberately the positioning context for `.poi-tile__meta` instead of
+// `.poi-tile__header`, so the meta line's right edge lines up with wherever
+// the name text itself actually ends (short name or truncated-long name
+// alike), not the tile's own right edge. Flex items default to
+// shrink-to-fit width when no flex-grow is set, so this wrapper is
+// naturally exactly as wide as the rendered name.
+.poi-tile__name-wrap {
+  // Lets it still shrink below its content width when the flex row is
+  // tight, which is what lets the name's own `text-truncate` ellipsis kick
+  // in — no Bootstrap utility for `min-width`, stays here.
+  min-width: 0;
+}
+
+.poi-tile__meta {
+  // Fixed rem, not a percentage — a percentage `max-width` here would
+  // resolve against `.poi-tile__name-wrap`'s own (often narrow) width, the
+  // wrong ancestor for this purpose. This just caps a long address/hours
+  // combo from running off the tile's own left edge for a short name;
+  // accepted as a rare-case limit, not solved with more precise measurement.
+  max-width: 9.5rem;
+  font-size: 0.7rem;
+  // Pulls it up into the name's own line-height whitespace — `top: 100%`
+  // alone (still in the template as `top-100`) sits flush against the name
+  // box's bottom edge, but a font's line box has built-in leading above/
+  // below the glyphs, which still read as a visible gap. Real user
+  // feedback: bring it closer.
+  margin-top: -0.2rem;
 }
 
 // Trail green, not amber — many tiles can be selected at once (this is a
@@ -23,8 +93,41 @@
   box-shadow: 0 0 0 2px var(--color-trail-green);
 }
 
+// `position: absolute` lives as a Bootstrap utility class in the template —
+// only the custom (non-0/50/100%) offset values stay here.
 .poi-tile__badge {
-  position: absolute;
   top: 0.5rem;
   right: 0.5rem;
+}
+
+// The scrollable region within the now-fixed-height tile — harmless when the
+// (possibly expanded) description fits, kicks in when it doesn't, so the
+// description can be read in full without the card itself growing.
+.poi-tile__description-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+// Clamped to 3 lines by default (toggled off via `descriptionExpanded()`) —
+// a full sentence reads better than a mid-word cutoff at rest, while the
+// "więcej..." toggle (not just CSS clamping alone) is what actually lets a
+// longer description be read in full — a real user complaint: clamped text
+// looked truncated with no way to expand it.
+.poi-tile__description--clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// Anchored bottom-right via the card-body's `mt-auto` + `align-self-end`
+// (plain flexbox, not `position: absolute`) — deliberately not floated over
+// the description text, which would risk overlapping its last line; this
+// way it always sits below the description in normal flow, pinned to the
+// tile's bottom edge by the flex column's remaining space.
+.poi-tile__expand-toggle,
+.poi-tile__description-action {
+  font-size: 0.75rem;
+  flex-shrink: 0;
 }

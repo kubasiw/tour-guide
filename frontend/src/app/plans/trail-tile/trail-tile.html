@@ -1,0 +1,25 @@
+<div
+  class="trail-tile card text-start bg-success-subtle"
+  [class.trail-tile--selected]="selected()"
+  role="button"
+  tabindex="0"
+  (click)="toggled.emit()"
+  (keydown.enter)="toggled.emit()"
+>
+  <div class="card-body p-2 position-relative d-flex align-items-center gap-2">
+    @if (selected()) {
+      <span class="trail-tile__badge position-absolute badge bg-primary">
+        <i class="bi bi-check-lg"></i>
+      </span>
+    }
+    <i class="bi bi-signpost-2-fill fs-4 flex-shrink-0"></i>
+    <div class="flex-grow-1 min-w-0">
+      <div class="trail-tile__name fw-semibold text-truncate">{{ trail().name }}</div>
+      @if (metaLine()) {
+        <div class="trail-tile__meta small text-body-secondary text-truncate">
+          {{ metaLine() }}
+        </div>
+      }
+    </div>
+  </div>
+</div>

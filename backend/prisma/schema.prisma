@@ -30,19 +30,20 @@ model PasswordResetToken {
 }
 
 model Plan {
-  id                       String     @id @default(uuid())
+  id                       String          @id @default(uuid())
   userId                   String?
-  user                     User?      @relation(fields: [userId], references: [id])
-  status                   String     @default("draft")
+  user                     User?           @relation(fields: [userId], references: [id])
+  status                   String          @default("draft")
   area                     Area?
-  activities               String[]   @default([])
+  activities               String[]        @default([])
   startDate                DateTime?
   durationDays             Int?
   items                    PlanItem[]
+  trailItems               PlanTrailItem[]
   aiDescription            String?
   aiDescriptionGeneratedAt DateTime?
   themePreset              String?
-  createdAt                DateTime   @default(now())
+  createdAt                DateTime        @default(now())
 }
 
 model Area {
@@ -82,4 +83,33 @@ model PlanItem {
   createdAt    DateTime @default(now())
 
   @@unique([planId, poiId])
+}
+
+// A deliberately separate model from `PlanItem` rather than a polymorphic
+// poiId/trailId union on it — trails have their own small "Twoje szlaki"
+// list next to "Twój plan", not interleaved/drag-reordered together with
+// POIs (confirmed via AskUserQuestion, 2026-07-23: smaller, safer change
+// that doesn't touch the existing, working POI plan-item/reorder code).
+model Trail {
+  id             String          @id @default(uuid())
+  osmId          String          @unique
+  name           String
+  ref            String?
+  colour         String?
+  distanceKm     Float?
+  planTrailItems PlanTrailItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model PlanTrailItem {
+  id        String   @id @default(uuid())
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id])
+  trailId   String
+  trail     Trail    @relation(fields: [trailId], references: [id])
+  order     Int
+  createdAt DateTime @default(now())
+
+  @@unique([planId, trailId])
 }

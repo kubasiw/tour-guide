@@ -38,6 +38,55 @@
       }
     </div>
 
+    @if (area()) {
+      <div class="mb-4">
+        <button
+          type="button"
+          class="btn btn-outline-secondary btn-sm"
+          [class.btn-loading]="trailsDiscoveryLoading()"
+          [disabled]="trailsDiscoveryLoading()"
+          (click)="discoverTrails()"
+        >
+          <span class="btn-loading__label">
+            <i class="bi bi-signpost-2 me-1"></i>Szlaki w tym obszarze
+          </span>
+          @if (trailsDiscoveryLoading()) {
+            <app-loader variant="spinner" class="btn-loading__spinner" />
+          }
+        </button>
+
+        @if (trailsDiscoveryError(); as message) {
+          <ngb-alert type="danger" class="small py-2 mt-2" [dismissible]="false">
+            {{ message }}
+          </ngb-alert>
+        }
+
+        @if (discoveredTrails().length > 0) {
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            @for (trail of discoveredTrails(); track trail.id) {
+              <button
+                type="button"
+                class="btn btn-sm"
+                [class.btn-accent]="selectedTrailId() === trail.id"
+                [class.btn-outline-secondary]="selectedTrailId() !== trail.id"
+                (click)="selectTrail(trail)"
+              >
+                @if (trailGeometryLoading() === trail.id) {
+                  <app-loader variant="spinner" />
+                } @else {
+                  {{ trail.name }}
+                }
+              </button>
+            }
+          </div>
+        } @else if (trailsSearched() && !trailsDiscoveryLoading() && !trailsDiscoveryError()) {
+          <p class="text-body-secondary small mt-2 mb-0">
+            Nie znaleziono szlaków pieszych w tym obszarze.
+          </p>
+        }
+      </div>
+    }
+
     <h2 class="h5 mb-3">Aktywności</h2>
     <div class="d-flex flex-wrap gap-2 mb-4">
       @for (activity of activities; track activity.key) {

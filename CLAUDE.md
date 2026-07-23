@@ -157,6 +157,56 @@ is complete; work now moves to "Beyond MVP" below.
    click, rather than duplicating that logic. Still fully toggleable off. Verified live: on a fresh
    page load the toggle renders already active (solid green), the Waymarked Trails tile images are
    already in the DOM, and the legend chip is already present — no click needed.
+   **✅ Built (2026-07-23), second slice — real vector trail geometry.** The tile overlay only
+   ever showed trails as a flat raster image; this slice adds actual clickable trail *lines*.
+   Confirmed via `AskUserQuestion`: since Waymarked Trails' own search is by name only (no
+   bbox/area discovery — its `bbox` param on `/list/search` is silently ignored, confirmed live),
+   discovery goes through **Overpass** instead (`relation["route"="hiking"](bbox);out ids tags;` —
+   the exact same data source `PoiModule` already uses, just a different element type), and the
+   real polyline geometry comes from **Waymarked Trails** once a specific route is picked. New
+   backend `TrailsModule` (`backend/src/trails/`, mirrors `GeocodingModule`'s shape):
+   `GET /trails?south=&west=&north=&east=` (Overpass discovery, returns lightweight
+   `{id, name, ref, colour, distanceKm}[]`, no geometry — fetching every discovered route's full
+   geometry up front would be wasteful for an area that might list 20+ routes the user never
+   clicks) and `GET /trails/:osmId/geometry` (Waymarked Trails, returns the real geometry once the
+   user picks one).
+   **Real endpoint shapes, confirmed live before writing any code** (not guessed — the earlier
+   "endpoints 404'd" note above was exactly the failure mode this was meant to avoid repeating):
+   found the actual paths by downloading and grepping Waymarked Trails' own production JS bundle
+   (`hiking.waymarkedtrails.org/build/main.js`) for `/list/` and `/details/` path literals, since
+   their search UI wasn't reliably automatable in this environment (same class of issue as
+   Leaflet vertex-drag/`NgbTypeahead` simulation) — real paths are `GET /api/v1/list/search?query=`
+   and `GET /api/v1/details/relation/{osmId}`, verified with real curl calls against a real OSM
+   relation id (itself obtained live via Overpass, not invented).
+   **Real gotcha caught before it became a bug: `/details/relation/{id}`'s geometry coordinates are
+   in Web Mercator (EPSG:3857), not plain WGS84 lat/lng** — e.g. `[2185178.2, 6468042.15]`, not
+   `[19.9, 50.06]`. Confirmed by reprojecting a real returned coordinate with the standard inverse
+   spherical-Mercator formula and cross-checking the result against the actual real-world location
+   (~50.03°N 19.6°E, Krzeszowice near Kraków) — not assumed from the formula alone.
+   `TrailsService.unprojectWebMercator` does this server-side (plain math, no library needed), so
+   the frontend's `TrailGeometry` type is always plain lat/lng, same shape as everything else in
+   this app (`Poi.lat/lng`, `Area` points, ...) — keeps the Leaflet-specific concern (this app's
+   current map library) out of the data contract.
+   **Frontend**: new `core/trail.model.ts`/`trail.service.ts` (mirrors `PoiService`'s shape).
+   `PlanSetup` gained a "Szlaki w tym obszarze" button (shown once an area is drawn, **explicit
+   trigger, not auto-fired on every area edit** — same "respect Overpass's own light rate-limit"
+   precedent as everywhere else Overpass is called) that lists discovered trail names as toggle
+   buttons; clicking one fetches its real geometry and draws it as `L.polyline`s in a
+   `L.featureGroup` (not `L.layerGroup` — only `FeatureGroup` exposes `getBounds()`, needed to
+   `fitBounds` the map to the selected trail), amber-colored (`--color-amber`, matching this app's
+   "amber for the one currently-most-important/selected element" convention, since only one trail
+   can be highlighted at a time here — unlike POI tile selection, which is multi-select and
+   correctly uses trail-green instead). Selecting a trail clears any previously-drawn one first.
+   Deliberately **not** persisted to `Plan`/`PlanItem` — this is a live map preview while setting
+   up the area, not a selectable, savable plan item; no new geometry column on `PlanItem` yet
+   (still explicitly deferred, same note as the original captured idea).
+   **Verified end-to-end with real data, not mocked**: a live plan with an 8km-radius area around
+   Krzeszowice (a real area known to contain OSM hiking routes, confirmed via the same live
+   Overpass query used to research this feature) returned 26 real named trails on click; selecting
+   "Dolinek Jurajskich" rendered 224 real `<path>` polylines on the map (matching the backend's own
+   224 way-segment count for that exact relation, checked independently via curl), all in the
+   correct amber color, with the trail button switching to its active/accent state; confirmed no
+   horizontal overflow and the trail list wraps correctly at 375px mobile width.
 3. ✅ `PlanGeneratorModule` — `GET /plans/:id/candidates` maps the plan's `activities` to
    `PoiType`s (`plan-generator/activity-poi-mapping.ts`), fetches matches via
    `PoiService.findInBoundingBox`, and returns them balanced round-robin across the matched
@@ -1011,6 +1061,87 @@ is complete; work now moves to "Beyond MVP" below.
     clientWidth === 0` at 320px that this 4th nav item doesn't reintroduce the overflow regression
     documented under `my-plans/` above. `{ path: 'change-password', canActivate: [authGuard] }` —
     genuinely account-bound, same reasoning as `my-plans/`.
+14. ✅ **Waymarked Trails — real trail geometry, and trails addable to the plan (2026-07-23).**
+    Two slices, built back to back. **First: real trail vector geometry on `plan-setup`**, replacing
+    the earlier raster-tile-only overlay (roadmap-captured idea from 2026-07-22, "Idea captured, not
+    built" note under step 2 below) — a "Szlaki w tym obszarze" button (explicit-trigger, same
+    Overpass-rate-limit-respecting precedent as everywhere else) queries Overpass for real named
+    hiking routes in the drawn area (`relation["route"="hiking"](bbox);out ids tags;` — Overpass has
+    no bbox-search itself, only Waymarked Trails' own `/list/search` does, which is global/by-name
+    only), lists them, and clicking one fetches+draws its real polyline geometry (not just a
+    trailhead point) via Waymarked Trails' **real, confirmed-live** API:
+    `GET /api/v1/details/relation/{osmId}` (`route.main[].ways[].geometry` — the exact endpoint
+    shape was *not* knowable from documentation/memory, same "verify, don't assume" precedent as
+    every other external API in this app; confirmed by downloading the site's own production JS
+    bundle via curl and grepping it for real `/list/`/`/details/` path literals, since the search UI
+    itself wasn't reliably automatable in this environment — same class of limitation as this app's
+    other documented Leaflet/NgbTypeahead automation gotchas). **Gotcha: the returned coordinates are
+    in Web Mercator (EPSG:3857) meters, not WGS84 lat/lng** — confirmed by reprojecting a real
+    coordinate and cross-checking against the real-world location; `TrailsService
+    .unprojectWebMercator(x, y)` does the inverse spherical-Mercator math server-side, plain
+    arithmetic, no new library.
+    **Second: trails addable to the plan itself** (user's own follow-up idea, 2026-07-23) — on
+    `plan-detail`/`poi-picker` ("Ustal szczegóły"), alongside the existing POI tiles/map, a
+    **"Szlaki" section** now shows discoverable trails as tiles too, selectable into the plan and
+    shown on their own small preview map — but **only when `hiking` is one of the plan's selected
+    activities** (`PoiPicker.hikingSelected`, gates whether the trail-candidate/trail-item resources
+    even fire at all — same "zero network noise when a feature isn't relevant" precedent as the
+    AI-description resource's own auth gating). **Confirmed via `AskUserQuestion`: a genuinely
+    separate `Trail`/`PlanTrailItem` data model, not a polymorphic `PlanItem`** — trails get their
+    own small "Twoje szlaki" list, not interleaved/drag-reordered together with POI plan items; the
+    smaller, safer slice that doesn't touch the existing, working POI `PlanItem`/reorder code.
+    New Prisma models: `Trail` (`osmId String @unique` — the raw OSM relation id, needed to call
+    Waymarked Trails' geometry endpoint — plus `name`/`ref`/`colour`/`distanceKm` parsed from
+    Overpass tags) and `PlanTrailItem` (`planId`+`trailId`+`order`, `@@unique([planId, trailId])`
+    blocking double-adds same as `PlanItem`; deliberately **no** `onDelete: Cascade` on either
+    relation, matching `PlanItem`'s own lack of cascade for consistency). **`TrailsService` now
+    persists discovered trails** (cache-then-reference, same pattern as `Poi`) — `findInBoundingBox`
+    upserts each Overpass-discovered relation into `Trail` keyed by `osmId` and returns the
+    DB-backed `id` (uuid); that `id` is what `PlanTrailItem.trailId` references, while `osmId` stays
+    the separate field needed for the geometry-endpoint call — **`Trail.id` changed meaning** from
+    the vector-geometry slice above (was the raw OSM id) to the DB uuid, a real regression caught
+    and fixed mid-session: `plan-setup.ts`'s own trail-preview `selectTrail()` had to be updated to
+    call `getGeometry(trail.osmId)` instead of `trail.id` once this changed. New endpoints, all
+    under `plans/:planId` alongside the existing POI ones: `GET trail-candidates` (no activity gate
+    server-side — deliberately a frontend display decision, so the endpoint itself stays reusable),
+    `GET trail-items`, `POST trail-items` (409 on duplicate, mirrors `addItem`), `DELETE
+    trail-items/:itemId` — `PlanGeneratorService`'s new trail methods query `prisma.trail`/
+    `prisma.planTrailItem` directly rather than routing through `TrailsService`, mirroring how the
+    existing `addItem` already bypasses `PoiService` for its own POI-existence check.
+    Frontend: new dumb `plans/trail-tile/` (mirrors `PoiTile`'s minimal shape — no description
+    features, trails don't have one — icon/name/ref+distance meta line, trail-green selected border
+    since multiple trails can be added at once, same multi-select-uses-green-not-amber convention as
+    `PoiTile`) and new dumb `plans/trail-map/` (a small self-contained Leaflet box showing the
+    currently-previewed trail's polyline, amber, matching `plan-setup`'s own single-selection
+    preview convention — deliberately its own component rather than extending `PoiMap` with
+    trail-specific concerns, same separate-list boundary the data model itself was scoped to).
+    Clicking a trail tile does both at once — toggles it into/out of `PlanTrailItem`s *and* (when
+    adding) fetches+previews its real geometry on `TrailMap`; removing the previewed trail clears
+    the preview too. `PoiPicker` gained an `activities = input<string[]>([])`, threaded from
+    `plan-detail.html` (`[activities]="value.activities"`, the full already-loaded `Plan`) — the
+    trail-candidate/trail-item `rxResource`s key their `params` on `hikingSelected() ? planId() :
+    undefined`, so they simply never fire otherwise. "Twoje szlaki" renders as a plain
+    `list-group`, not the signature dashed `.trail-list` (that motif implies a numbered *sequence*,
+    which trail plan-items deliberately aren't — no reorder).
+    **Verified end-to-end**: backend curl (add/list/duplicate→409/remove all confirmed, trail
+    geometry endpoint returns real reprojected lat/lng matching a real-world location); browser
+    verification against a real Zakopane-area test plan with `hiking` selected showed the loading
+    skeleton, a real Overpass `502` error state rendering correctly (`ngb-alert`, not a crash —
+    Overpass's shared public instance rate-limited multiple times during this session's own testing,
+    an already-documented, accepted, non-code limitation — confirmed via a direct curl reproducing
+    the identical "server too busy" error independent of this app's code), and the real happy-path
+    trail-candidate list (24 genuine named Tatra routes) once the rate limit cleared.
+    **Retry button added (2026-07-23), real user report of a longer outage:** unlike
+    `plan-setup`'s own "Szlaki w tym obszarze" (already a button, naturally re-clickable), the
+    `poi-picker` trail-candidates section fetches once via `rxResource` with no way to retry short
+    of a full page reload. A user hit an Overpass outage that persisted much longer than this
+    session's earlier rate-limit blips — confirmed genuinely external via a direct `curl` straight
+    to `overpass-api.de` (same "server too busy" `504`, even for a trivial single-node query with a
+    tiny bbox) and to the alternate Kumi Systems mirror (`overpass.kumi.systems`, which didn't
+    respond at all) — not something fixable from this app's side. Added a small "Spróbuj ponownie"
+    button inside the error `ngb-alert`, calling `trailCandidates.reload()` (the same `reload()`
+    already used elsewhere on `rxResource`, e.g. `items.reload()`) — verified live that clicking it
+    fires a genuine new `GET .../trail-candidates` request.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

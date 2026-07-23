@@ -1,0 +1,8 @@
+@use 'variables' as v;
+
+.trail-map__container {
+  height: 400px;
+  width: 100%;
+  border-radius: v.$border-radius;
+  overflow: hidden;
+}

@@ -35,9 +35,11 @@ import {
 } from 'rxjs';
 import { ACTIVITIES } from '../core/activity.model';
 import { API_BASE_URL } from '../core/api-base-url';
-import { Area } from '../core/area.model';
+import { Area, areaBoundingBox } from '../core/area.model';
 import { GeocodeSearchResult, GeocodingService } from '../core/geocoding.service';
 import { extractErrorMessage } from '../core/http-error';
+import { Trail } from '../core/trail.model';
+import { TrailService } from '../core/trail.service';
 import { buildPlanSteps } from '../plans/plan-steps';
 import { Plan } from '../plans/plan.model';
 import { PlanService, UpdatePlanPayload } from '../plans/plan.service';
@@ -50,6 +52,12 @@ const SEARCH_DEBOUNCE_MS = 300;
 
 const DEFAULT_CENTER: L.LatLngExpression = [50.06, 19.94];
 const DEFAULT_ZOOM = 13;
+
+// Amber, not trail-green — only one trail can be highlighted at a time here
+// (picking a new one replaces the last), matching this app's "amber for the
+// single most-important/selected element" convention rather than green's
+// "can be multi-selected" one.
+const SELECTED_TRAIL_COLOR = '#854f0b';
 
 // Leaflet's default marker icon paths don't resolve through a bundler; the actual
 // files are copied to `leaflet-images/` via an angular.json asset glob.
@@ -94,6 +102,7 @@ export class PlanSetup {
   private readonly destroyRef = inject(DestroyRef);
   private readonly planService = inject(PlanService);
   private readonly geocodingService = inject(GeocodingService);
+  private readonly trailService = inject(TrailService);
   private readonly router = inject(Router);
   private readonly calendar = inject(NgbCalendar);
 
@@ -110,6 +119,18 @@ export class PlanSetup {
   // view that requiring an extra click no longer earns its keep now that the toggle
   // itself is easy to find (see addTrailsToggleControl's own positioning note).
   protected readonly trailsVisible = signal(true);
+
+  // Real trail geometry, distinct from the raster tile overlay above —
+  // discovery is explicit-trigger (a button, not auto-fired whenever the
+  // drawn area changes) to respect Overpass's own light rate-limit, same
+  // "don't auto-fire external calls aggressively" precedent as the AI
+  // narration button elsewhere in this app.
+  protected readonly discoveredTrails = signal<Trail[]>([]);
+  protected readonly trailsSearched = signal(false);
+  protected readonly trailsDiscoveryLoading = signal(false);
+  protected readonly trailsDiscoveryError = signal<string | null>(null);
+  protected readonly selectedTrailId = signal<string | null>(null);
+  protected readonly trailGeometryLoading = signal<string | null>(null);
 
   protected readonly searchControl = new FormControl('', { nonNullable: true });
 
@@ -139,6 +160,7 @@ export class PlanSetup {
   private hasSeededExisting = false;
   private trailsLayer?: L.TileLayer;
   private trailsLegendControl?: L.Control;
+  private selectedTrailLayer?: L.FeatureGroup;
 
   public constructor() {
     afterNextRender(() => this.initMap());
@@ -165,6 +187,80 @@ export class PlanSetup {
   protected clear(): void {
     this.area.set(null);
     this.drawnItems?.clearLayers();
+    this.discoveredTrails.set([]);
+    this.trailsSearched.set(false);
+    this.trailsDiscoveryError.set(null);
+    this.clearSelectedTrail();
+  }
+
+  // Explicit-trigger button, not auto-fired on every area edit — Overpass
+  // has its own light rate-limit (documented elsewhere in this app) and a
+  // user actively dragging/resizing the area shouldn't fire a request per
+  // tweak.
+  protected discoverTrails(): void {
+    const area = this.area();
+    if (!area) {
+      return;
+    }
+
+    this.trailsDiscoveryLoading.set(true);
+    this.trailsDiscoveryError.set(null);
+    this.clearSelectedTrail();
+
+    this.trailService.findInBoundingBox(areaBoundingBox(area)).subscribe({
+      next: (trails) => {
+        this.discoveredTrails.set(trails);
+        this.trailsDiscoveryLoading.set(false);
+        this.trailsSearched.set(true);
+      },
+      error: (err: unknown) => {
+        this.trailsDiscoveryLoading.set(false);
+        this.trailsDiscoveryError.set(extractErrorMessage(err));
+        this.trailsSearched.set(true);
+      },
+    });
+  }
+
+  protected selectTrail(trail: Trail): void {
+    const map = this.mapSignal();
+    if (!map) {
+      return;
+    }
+
+    this.selectedTrailId.set(trail.id);
+    this.trailGeometryLoading.set(trail.id);
+
+    this.trailService.getGeometry(trail.osmId).subscribe({
+      next: (geometry) => {
+        this.trailGeometryLoading.set(null);
+        this.selectedTrailLayer?.remove();
+
+        // `featureGroup`, not `layerGroup` — only `FeatureGroup` exposes
+        // `getBounds()`, needed right below to fit the map to the trail.
+        const layer = L.featureGroup(
+          geometry.segments.map((segment) =>
+            L.polyline(
+              segment.map((point): L.LatLngTuple => [point.lat, point.lng]),
+              { color: SELECTED_TRAIL_COLOR, weight: 4 },
+            ),
+          ),
+        ).addTo(map);
+
+        this.selectedTrailLayer = layer;
+        map.fitBounds(layer.getBounds());
+      },
+      error: () => {
+        this.trailGeometryLoading.set(null);
+        this.selectedTrailId.set(null);
+      },
+    });
+  }
+
+  private clearSelectedTrail(): void {
+    this.selectedTrailLayer?.remove();
+    this.selectedTrailLayer = undefined;
+    this.selectedTrailId.set(null);
+    this.trailGeometryLoading.set(null);
   }
 
   protected toggleActivity(key: string): void {

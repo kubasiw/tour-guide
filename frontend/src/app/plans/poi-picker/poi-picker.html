@@ -97,6 +97,71 @@
     }
   }
 
+  @if (hikingSelected()) {
+    <h2 class="h5 mb-3">Szlaki</h2>
+
+    @if (trailToggleError(); as message) {
+      <ngb-alert type="danger" class="small py-2" [dismissible]="false">
+        {{ message }}
+      </ngb-alert>
+    }
+
+    @if ((trailItems.value() ?? []).length > 0) {
+      <h3 class="h6">Twoje szlaki</h3>
+      <ul class="list-group mb-3">
+        @for (item of trailItems.value(); track item.id) {
+          <li class="list-group-item d-flex align-items-center gap-2">
+            <i class="bi bi-signpost-2-fill text-success flex-shrink-0"></i>
+            <span class="flex-grow-1 text-truncate">{{ item.trail.name }}</span>
+            <button
+              type="button"
+              class="btn btn-outline-secondary btn-sm flex-shrink-0"
+              (click)="toggleTrail(item.trail)"
+            >
+              <i class="bi bi-x-lg"></i>
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (trailCandidates.isLoading()) {
+      <app-loader variant="skeleton" [lines]="2" />
+    } @else if (trailCandidates.error()) {
+      <ngb-alert type="danger" [dismissible]="false">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>Nie udało się pobrać szlaków.
+        <button
+          type="button"
+          class="btn btn-outline-danger btn-sm ms-2"
+          (click)="trailCandidates.reload()"
+        >
+          Spróbuj ponownie
+        </button>
+      </ngb-alert>
+    } @else if (trailCandidates.value(); as trails) {
+      @if (trails.length === 0) {
+        <p class="text-body-secondary mb-4">Brak znanych szlaków w tej okolicy.</p>
+      } @else {
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-lg-6">
+            <div class="d-flex flex-column gap-2">
+              @for (trail of trails; track trail.id) {
+                <app-trail-tile
+                  [trail]="trail"
+                  [selected]="isTrailSelected(trail)"
+                  (toggled)="toggleTrail(trail)"
+                />
+              }
+            </div>
+          </div>
+          <div class="col-12 col-lg-6">
+            <app-trail-map [geometry]="previewedTrailGeometry()" />
+          </div>
+        </div>
+      }
+    }
+  }
+
   @if (authService.isAuthenticated()) {
     <app-plan-chat [planId]="planId()" (itemsChanged)="items.reload()" />
   }

@@ -11,6 +11,7 @@ import { PlanGeneratorModule } from './plan-generator/plan-generator.module';
 import { PlansModule } from './plans/plans.module';
 import { PoiModule } from './poi/poi.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { TrailsModule } from './trails/trails.module';
 import { WeatherModule } from './weather/weather.module';
 
 @Module({
@@ -26,6 +27,7 @@ import { WeatherModule } from './weather/weather.module';
     GeocodingModule,
     AiModule,
     PlanChatModule,
+    TrailsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

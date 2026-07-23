@@ -1,0 +1,27 @@
+.trail-tile {
+  width: 100%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--bs-border-color);
+  }
+}
+
+// Trail green, not amber — this is a multi-select list (several trails can
+// be added to a plan at once), same convention as .poi-tile--selected.
+.trail-tile--selected {
+  border-color: var(--color-trail-green);
+}
+
+.trail-tile__badge {
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+// No Bootstrap utility for min-width — lets the name's text-truncate ellipsis
+// actually kick in inside a flex row.
+.min-w-0 {
+  min-width: 0;
+}

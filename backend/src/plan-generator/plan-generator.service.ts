@@ -11,12 +11,17 @@ import { PlansService } from '../plans/plans.service';
 import { Poi, PoiType, extractAddress } from '../poi/poi.types';
 import { PoiService } from '../poi/poi.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { Trail } from '../trails/trails.types';
+import { TrailsService } from '../trails/trails.service';
 import { ACTIVITY_TO_POI_TYPES } from './activity-poi-mapping';
-import { PlanItemWithPoi } from './plan-generator.types';
+import { PlanItemWithPoi, PlanTrailItem } from './plan-generator.types';
 
 const MAX_CANDIDATES = 24;
 
 type PlanItemRecord = Prisma.PlanItemGetPayload<{ include: { poi: true } }>;
+type PlanTrailItemRecord = Prisma.PlanTrailItemGetPayload<{
+  include: { trail: true };
+}>;
 
 @Injectable()
 export class PlanGeneratorService {
@@ -25,6 +30,7 @@ export class PlanGeneratorService {
     private readonly plansService: PlansService,
     private readonly poiService: PoiService,
     private readonly aiService: AiService,
+    private readonly trailsService: TrailsService,
   ) {}
 
   public async findCandidates(planId: string): Promise<Poi[]> {
@@ -53,6 +59,18 @@ export class PlanGeneratorService {
       poiTypes,
       Math.min(candidates.length, MAX_CANDIDATES),
     );
+  }
+
+  // No activity gating here (unlike `findCandidates` above) — whether
+  // trails are worth showing for this plan is a frontend UI decision (only
+  // render the tiles/button when `hiking` is selected), not something this
+  // endpoint needs to enforce; a plan with no activities set yet can still
+  // ask "what trails exist in this area" without error.
+  public async findTrailCandidates(planId: string): Promise<Trail[]> {
+    const plan = await this.plansService.findOne(planId);
+    const bbox = areaBoundingBox(plan.area);
+    const trails = await this.trailsService.findInBoundingBox(bbox);
+    return trails.slice(0, MAX_CANDIDATES);
   }
 
   public async findItems(planId: string): Promise<PlanItemWithPoi[]> {
@@ -144,6 +162,69 @@ export class PlanGeneratorService {
     return this.findItems(planId);
   }
 
+  // Trail items are a deliberately separate list from POI plan items — own
+  // model (`PlanTrailItem`), own add/remove, no reorder (confirmed via
+  // AskUserQuestion, 2026-07-23: a smaller, safer slice than making
+  // `PlanItem` polymorphic over Poi/Trail). Mirrors `findItems`/`addItem`/
+  // `removeItem` above almost exactly, just against a different pair of
+  // Prisma models.
+  public async findTrailItems(planId: string): Promise<PlanTrailItem[]> {
+    await this.plansService.findOne(planId);
+
+    const items = await this.prisma.planTrailItem.findMany({
+      where: { planId },
+      include: { trail: true },
+      orderBy: [{ order: 'asc' }],
+    });
+
+    return items.map((item) => this.toPlanTrailItem(item));
+  }
+
+  public async addTrailItem(
+    planId: string,
+    trailId: string,
+  ): Promise<PlanTrailItem> {
+    await this.plansService.findOne(planId);
+
+    const trail = await this.prisma.trail.findUnique({
+      where: { id: trailId },
+    });
+    if (!trail) {
+      throw new NotFoundException('Trail not found');
+    }
+
+    const existingCount = await this.prisma.planTrailItem.count({
+      where: { planId },
+    });
+
+    try {
+      const item = await this.prisma.planTrailItem.create({
+        data: { planId, trailId, order: existingCount + 1 },
+        include: { trail: true },
+      });
+      return this.toPlanTrailItem(item);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Trail is already in this plan');
+      }
+      throw error;
+    }
+  }
+
+  public async removeTrailItem(planId: string, itemId: string): Promise<void> {
+    const item = await this.prisma.planTrailItem.findUnique({
+      where: { id: itemId },
+    });
+    if (!item || item.planId !== planId) {
+      throw new NotFoundException('Plan trail item not found');
+    }
+
+    await this.prisma.planTrailItem.delete({ where: { id: itemId } });
+  }
+
   public async generateNarration(
     planId: string,
   ): Promise<{ narration: string }> {
@@ -213,6 +294,21 @@ export class PlanGeneratorService {
         openingHours: item.poi.openingHours,
         aiDescription: item.poi.aiDescription,
         address: extractAddress(item.poi.sourceData),
+      },
+    };
+  }
+
+  private toPlanTrailItem(item: PlanTrailItemRecord): PlanTrailItem {
+    return {
+      id: item.id,
+      order: item.order,
+      trail: {
+        id: item.trail.id,
+        osmId: item.trail.osmId,
+        name: item.trail.name,
+        ref: item.trail.ref,
+        colour: item.trail.colour,
+        distanceKm: item.trail.distanceKm,
       },
     };
   }

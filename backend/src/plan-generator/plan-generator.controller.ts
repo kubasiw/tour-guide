@@ -12,10 +12,12 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddPlanItemDto } from './dto/add-plan-item.dto';
+import { AddTrailItemDto } from './dto/add-trail-item.dto';
 import { ReorderItemsDto } from './dto/reorder-items.dto';
 import { PlanGeneratorService } from './plan-generator.service';
-import { PlanItemWithPoi } from './plan-generator.types';
+import { PlanItemWithPoi, PlanTrailItem } from './plan-generator.types';
 import { Poi } from '../poi/poi.types';
+import { Trail } from '../trails/trails.types';
 
 @Controller('plans/:planId')
 export class PlanGeneratorController {
@@ -58,6 +60,37 @@ export class PlanGeneratorController {
     @Body() dto: ReorderItemsDto,
   ): Promise<PlanItemWithPoi[]> {
     return this.planGeneratorService.reorderItems(planId, dto.itemIds);
+  }
+
+  @Get('trail-candidates')
+  public findTrailCandidates(
+    @Param('planId') planId: string,
+  ): Promise<Trail[]> {
+    return this.planGeneratorService.findTrailCandidates(planId);
+  }
+
+  @Get('trail-items')
+  public findTrailItems(
+    @Param('planId') planId: string,
+  ): Promise<PlanTrailItem[]> {
+    return this.planGeneratorService.findTrailItems(planId);
+  }
+
+  @Post('trail-items')
+  public addTrailItem(
+    @Param('planId') planId: string,
+    @Body() dto: AddTrailItemDto,
+  ): Promise<PlanTrailItem> {
+    return this.planGeneratorService.addTrailItem(planId, dto.trailId);
+  }
+
+  @Delete('trail-items/:itemId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  public removeTrailItem(
+    @Param('planId') planId: string,
+    @Param('itemId') itemId: string,
+  ): Promise<void> {
+    return this.planGeneratorService.removeTrailItem(planId, itemId);
   }
 
   @UseGuards(JwtAuthGuard)

@@ -5,8 +5,10 @@ import { API_BASE_URL } from '../core/api-base-url';
 import { Area } from '../core/area.model';
 import { AreaTheme } from '../core/area-theme.model';
 import { Poi } from '../core/poi.model';
+import { Trail } from '../core/trail.model';
 import { Plan } from './plan.model';
 import { PlanItemWithPoi } from './plan-item.model';
+import { PlanTrailItem } from './plan-trail-item.model';
 
 export interface UpdatePlanPayload {
   activities?: string[];
@@ -73,5 +75,23 @@ export class PlanService {
       `${API_BASE_URL}/plans/${planId}/narration`,
       {},
     );
+  }
+
+  public getTrailCandidates(planId: string): Observable<Trail[]> {
+    return this.http.get<Trail[]>(`${API_BASE_URL}/plans/${planId}/trail-candidates`);
+  }
+
+  public getTrailItems(planId: string): Observable<PlanTrailItem[]> {
+    return this.http.get<PlanTrailItem[]>(`${API_BASE_URL}/plans/${planId}/trail-items`);
+  }
+
+  public addTrailItem(planId: string, trailId: string): Observable<PlanTrailItem> {
+    return this.http.post<PlanTrailItem>(`${API_BASE_URL}/plans/${planId}/trail-items`, {
+      trailId,
+    });
+  }
+
+  public removeTrailItem(planId: string, itemId: string): Observable<void> {
+    return this.http.delete<void>(`${API_BASE_URL}/plans/${planId}/trail-items/${itemId}`);
   }
 }

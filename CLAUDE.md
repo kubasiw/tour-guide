@@ -1200,6 +1200,60 @@ is complete; work now moves to "Beyond MVP" below.
     curl (bypassing a flaky Overpass discovery call that day) rendered as 23 real `<path>` segments
     together on one map, with no horizontal overflow at 375px mobile width.
 
+15. ✅ **Fragment mapy wydzielony jako Web Component (2026-07-24)** — inicjatywa nie tego projektu,
+    tylko siostrzanego `portfolio-shell` (osobne repo, `C:\portfolio-shell`, pełny kontekst w jego
+    własnym `PORTFOLIO_PLAN.md`): portfolio ma pokazywać "Projekt 01: tour-guide" jako żywy,
+    klikalny widget w karcie, nie tylko screenshot/link. Zdecydowano osadzać **fragment** (mapę),
+    nie całą apkę — cała apka ma własny router/auth/wiele ekranów, co wymagałoby orkiestracji
+    (single-spa), świadomie odrzuconej wcześniej w `MICROFRONTEND_POC_NOTES.md` na rzecz prostszych
+    Web Components. Nowy `src/app/mini-map-widget/` (`MiniMapWidget`) — smart component, cienki
+    wrapper wokół już istniejącego `PoiMap` (dumb, nieużyty tu żaden nowy kod mapy): pobiera realne
+    POI przez nową `PoiService.findInBoundingBox()` (nowy endpoint-caller, mirror
+    `TrailService.findInBoundingBox`) dla wbudowanego, nazwanego demo-obszaru (`area-id`, na razie
+    tylko `krakow-demo` — Stare Miasto, nie cały Kraków, po tym jak pierwsza szersza wersja bboxa
+    zwróciła ~1000 realnych POI na raz; ucięte dodatkowo twardym `MAX_DEMO_POIS = 40`, ten sam
+    "twardy limit czytelności" co `MAX_CANDIDATES` w `PlanGeneratorModule`, tu dla samego podglądu,
+    nie kosztu). Renderuje `<app-poi-map [readonly]="true">` z pustym, stabilnym `selectedPoiIds`.
+    **Nowy entry point `src/main-element.ts`** (`createApplication` + `createCustomElement` z
+    `@angular/elements@22.0.7` — dokładnie przypięta wersja, bo `@angular/elements` ma **ścisły**
+    peer dep na dokładną wersję `@angular/core`, nie zakres; `npm install @angular/elements@^22.0.0`
+    najpierw failował z realnym konfliktem peer deps, zanim sprawdzono dokładną wersję na registry),
+    definiuje realny tag `<tour-guide-mini-map>`. Nowy cel builda **`build-element`** w
+    `angular.json` (`@angular/build:application`, osobny `browser: src/main-element.ts`, osobny
+    `outputPath`), zbudowany i zweryfikowany osobno od głównej appki (`ng run
+    frontend:build-element:production` → 330KB/~90KB gzip).
+    **`ViewEncapsulation.ShadowDom`** na `MiniMapWidget` — widget żyje na cudzej stronie, więc styl
+    hosta nie może wejść do środka, a odwrotnie: Leaflet CSS (zwykle ładowany globalnie w tej
+    appce przez `angular.json`) jest **niewidoczny wewnątrz shadow roota**, więc musiał zostać
+    dołączony wprost jako `styleUrls` na samym komponencie (Angular wtedy wstrzykuje go do
+    utworzonego shadow roota) — potwierdzone realnie: bez tego mapa była całkowicie niewidoczna,
+    po dodaniu shadow root faktycznie zawierał Leafletowe reguły CSS. `bootstrap-icons.css`
+    (używany przez `PoiMap`'s popup na ikonę typu POI) świadomie **pominięty** — ~97KB CSS + osobny
+    plik fontu tylko dla jednej małej ikonki, nieproporcjonalny koszt; ikona po prostu się nie
+    renderuje (pusty `<i>`, zero błędów), nazwa/godziny nadal w pełni czytelne. Zamiast tego mały,
+    ręczny podzbiór faktycznie używanych klas Bootstrapa (`fw-semibold`/`small`/
+    `text-body-secondary`) zduplikowany w `mini-map-widget.scss` — świadomy wyjątek od "jedno
+    źródło prawdy", bo pełny Bootstrap byłby zbyt ciężki dla tego, co daje.
+    **Dwa realne bugi złapane żywą weryfikacją w przeglądarce (nie przez czytanie kodu):**
+    (1) `npm run build` (produkcyjny) głównej appki był **już wcześniej złamany** (pre-existing,
+    niezwiązane z tą sesją — potwierdzone przez `git stash` porównujące stan przed/po) — budżet
+    `anyComponentStyle` (4kB/8kB) był przekraczany przez `node_modules/leaflet/dist/leaflet.css`
+    (11KB) ładowany globalnie; nikt tego nie złapał wcześniej, bo tour-guide nie ma jeszcze
+    własnego CI. Naprawione podniesieniem budżetu do 15kB/20kB w `angular.json` (dotyczy obu celów
+    budowania — głównego i `build-element`, oba realnie ładują ten sam ciężki plik). (2) CORS
+    backendu (`app.enableCors`) miał tylko jeden hardkodowany origin (`localhost:4200`) — realna,
+    trwała potrzeba wielu originów teraz, gdy powstał drugi, osobny konsument tego samego API
+    (widget osadzony gdzie indziej); rozszerzone na tablicę originów (`4200`/`5173`/`4300` — główna
+    appka / portfolio-shell dev / lokalny statyczny serwer testowy widgetu), do doprecyzowania o
+    realną domenę produkcyjną portfolio przy wdrożeniu.
+    **Zweryfikowane end-to-end w prawdziwej przeglądarce** (osobna, statyczna strona testowa poza
+    tym repo, serwowana lokalnie): realny shadow root z Leaflet CSS w środku, 6 realnych kafli mapy,
+    40 realnych markerów POI (ucięte z ~1000), kliknięcie markera pokazuje popup z prawdziwą nazwą
+    POI (np. "Grażyna i Litawor"), bez przycisku dodawania (readonly), ręczny override
+    `fw-semibold` faktycznie pogrubia tekst wewnątrz shadow roota (`getComputedStyle` → `600`).
+    Deploy tego widgetu pod realną subdomeną i wpięcie w portfolio-shell (kroki 8-9 w
+    `PORTFOLIO_PLAN.md` po stronie portfolio) czeka na VPS — poza zasięgiem tego środowiska.
+
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history
 around the "step 4" clarification).

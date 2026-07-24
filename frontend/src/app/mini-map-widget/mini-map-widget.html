@@ -1,0 +1,7 @@
+@if (pois.isLoading()) {
+  <p class="mini-map-widget__status">Ładowanie mapy…</p>
+} @else if (pois.error()) {
+  <p class="mini-map-widget__status">Nie udało się załadować mapy.</p>
+} @else {
+  <app-poi-map [pois]="displayedPois()" [selectedPoiIds]="emptySelection" [readonly]="true" />
+}

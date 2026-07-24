@@ -1,0 +1,27 @@
+:host {
+  display: block;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+}
+
+.mini-map-widget__status {
+  padding: 16px;
+  margin: 0;
+  color: #5a5347;
+}
+
+/*
+ * Podzbiór klas utility Bootstrapa, których faktycznie używa PoiMap.buildPopupContent() na
+ * widocznym tekście (nazwa/godziny) — bez ładowania całego Bootstrapa do tego małego widgetu.
+ * Wartości zgodne ze stockowym Bootstrapem 5.3.
+ */
+.fw-semibold {
+  font-weight: 600;
+}
+
+.small {
+  font-size: 0.875em;
+}
+
+.text-body-secondary {
+  color: #6c757d;
+}

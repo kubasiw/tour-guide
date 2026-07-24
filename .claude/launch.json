@@ -6,6 +6,24 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "frontend", "start"],
       "port": 4200
+    },
+    {
+      "name": "portfolio-shell-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/portfolio-shell", "run", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "backend", "run", "start:dev"],
+      "port": 3000
+    },
+    {
+      "name": "mini-map-widget-test",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "frontend/dist/frontend-element/browser", "-l", "4300"],
+      "port": 4300
     }
   ]
 }

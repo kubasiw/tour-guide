@@ -7,6 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AreaTheme } from '../ai/area-theme.type';
 import {
   CurrentUser,
@@ -67,6 +68,7 @@ export class PlansController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get(':id/ai-description')
   public getAiDescription(
     @Param('id') id: string,

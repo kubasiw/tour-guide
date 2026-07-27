@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { CurrentUser, type CurrentUserPayload } from './current-user.decorator';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -12,11 +13,16 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 export class AuthController {
   public constructor(private readonly authService: AuthService) {}
 
+  // Ciaśniejszy limit niż domyślne 20/min — rejestracja to rzadka akcja dla realnego
+  // użytkownika; bez tego skrypt mógłby zakładać nieograniczoną liczbę kont w pętli.
+  @Throttle({ default: { limit: 3, ttl: 600000 } })
   @Post('register')
   public register(@Body() dto: RegisterDto): Promise<{ accessToken: string }> {
     return this.authService.register(dto.email, dto.password);
   }
 
+  // Chroni przed brute-force haseł, nie tylko przed spamem.
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   public login(@Body() dto: LoginDto): Promise<{ accessToken: string }> {
     return this.authService.login(dto.email, dto.password);
@@ -28,6 +34,9 @@ export class AuthController {
     return user;
   }
 
+  // Rzadka akcja + istniejąca ochrona przed enumeracją kont — dodatkowo ograniczona, żeby nie dało
+  // się jej użyć jako taniego sposobu na wysyłanie masowych maili/próbowanie wielu adresów.
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Post('forgot-password')
   public forgotPassword(
     @Body() dto: ForgotPasswordDto,

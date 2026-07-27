@@ -1401,6 +1401,25 @@ type-balanced but not distance-sorted from the area's center).
   reuses — unauthenticated users get a non-LLM overview (e.g. a Wikipedia/Wikivoyage extract) to
   keep anonymous traffic free of API cost. **First slice built (2026-07-21)** — see the Roadmap's
   step 8 note above for the short AI-written area description; narration/chat are still ahead.
+  **Abuse-prevention hardening (2026-07-27), prompted by a real audit before linking this project
+  publicly:** login-gating alone wasn't enough — `POST /auth/register` had zero rate limiting or
+  CAPTCHA, so a script could create unlimited accounts and then hammer the AI endpoints, burning
+  through the Anthropic budget with no friction at all. Fixed with two independent layers, not just
+  one: (1) `@nestjs/throttler` registered globally (`ThrottlerGuard` as an `APP_GUARD`, default
+  20 req/min per IP), with tighter `@Throttle()` overrides on `register` (3/10min), `login` (5/min,
+  also blunts brute-forcing), `forgot-password` (3/hour), and all 4 AI endpoints (POI description,
+  plan ai-description, narration, chat — 5/min each); (2) a genuinely independent, DB-backed daily
+  call-count cap (`AiUsageDay` model, `AiService.assertDailyBudget()`, called first thing in every
+  public `AiService` method before the actual Anthropic call) — a real circuit breaker that survives
+  container restarts and isn't defeated by spreading calls across many accounts/IPs over time, which
+  per-endpoint rate limiting alone can't stop. Configurable via `AI_DAILY_CALL_LIMIT` env var
+  (default 200/day across all 4 endpoints combined — a call-count budget, not token-based; simpler
+  and sufficient as a safety net, not a precise cost meter). **Verified for real, not just by
+  reading the code:** registering 4 accounts in a loop locally showed exactly 201/201/201/429; 6
+  login attempts showed 401×5 then 429; the daily-budget upsert/increment/reject logic itself was
+  verified directly against the real dev Postgres with a disposable script (count 1/2/3 pass,
+  4/5 correctly rejected) — deliberately *not* verified by actually calling the real Claude API
+  repeatedly, since that would spend real money just to prove a cost-safety feature works.
 
 ## Commands
 

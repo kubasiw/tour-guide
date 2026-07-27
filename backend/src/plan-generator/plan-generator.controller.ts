@@ -10,6 +10,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddPlanItemDto } from './dto/add-plan-item.dto';
 import { AddTrailItemDto } from './dto/add-trail-item.dto';
@@ -94,6 +95,7 @@ export class PlanGeneratorController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('narration')
   public generateNarration(
     @Param('planId') planId: string,

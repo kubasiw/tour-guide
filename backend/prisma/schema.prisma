@@ -113,3 +113,12 @@ model PlanTrailItem {
 
   @@unique([planId, trailId])
 }
+
+// Twardy dzienny "wyłącznik bezpieczeństwa" na wywołania AI — niezależny od rate limitingu
+// per-endpoint (który chroni przed szybkim spamem, ale nie przed wieloma kontami rozłożonymi
+// w czasie). Trwały w bazie (nie in-memory), więc przetrwa restart/redeploy kontenera.
+// date = "YYYY-MM-DD" w UTC.
+model AiUsageDay {
+  date  String @id
+  count Int    @default(0)
+}

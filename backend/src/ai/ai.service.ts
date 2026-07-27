@@ -1,6 +1,11 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
+import { PrismaService } from '../prisma/prisma.service';
 import { AREA_THEMES, AreaTheme } from './area-theme.type';
 
 const MODEL = 'claude-haiku-4-5-20251001';
@@ -41,19 +46,50 @@ const POI_DESCRIPTION_SYSTEM_PROMPT =
   'żadnych konkretnych faktów, ocen, godzin otwarcia ani historii, których nie znasz na pewno — ' +
   'pisz ogólnie o charakterze tego typu miejsca. Sam tekst, bez nagłówków i cudzysłowów.';
 
+// Twardy dzienny "wyłącznik bezpieczeństwa" na wywołania AI — chroni budżet Anthropic
+// niezależnie od rate limitingu per-endpoint (który spowalnia szybki spam z jednego IP, ale nie
+// powstrzymuje kogoś, kto rozłoży wywołania w czasie z wielu kont). Licznik wywołań, nie tokenów
+// — prostsze, wystarczające jako wyłącznik bezpieczeństwa, nie precyzyjny budżet kosztowy.
+// Konfigurowalny przez env, żeby dało się podnieść bez redeployu kodu, gdyby limit okazał się
+// za ciasny w realnym użyciu.
+const DEFAULT_DAILY_CALL_LIMIT = 200;
+
 @Injectable()
 export class AiService {
   private readonly client: Anthropic;
+  private readonly dailyCallLimit: number;
 
-  public constructor(configService: ConfigService) {
+  public constructor(
+    configService: ConfigService,
+    private readonly prisma: PrismaService,
+  ) {
     this.client = new Anthropic({
       apiKey: configService.get<string>('ANTHROPIC_API_KEY')!,
     });
+    this.dailyCallLimit = Number(
+      configService.get<string>('AI_DAILY_CALL_LIMIT') ??
+        DEFAULT_DAILY_CALL_LIMIT,
+    );
+  }
+
+  private async assertDailyBudget(): Promise<void> {
+    const today = new Date().toISOString().slice(0, 10);
+    const usage = await this.prisma.aiUsageDay.upsert({
+      where: { date: today },
+      create: { date: today, count: 1 },
+      update: { count: { increment: 1 } },
+    });
+    if (usage.count > this.dailyCallLimit) {
+      throw new ServiceUnavailableException(
+        'Dzienny limit wywołań AI został osiągnięty. Spróbuj ponownie jutro.',
+      );
+    }
   }
 
   public async generateAreaDescription(
     placeName: string,
   ): Promise<{ description: string; theme: AreaTheme }> {
+    await this.assertDailyBudget();
     try {
       const response = await this.client.messages.create({
         model: MODEL,
@@ -77,6 +113,7 @@ export class AiService {
     items: { name: string; type: string }[],
     activities: string[],
   ): Promise<string> {
+    await this.assertDailyBudget();
     try {
       const placesList = items
         .map((item) => `- ${item.name} (${item.type})`)
@@ -110,6 +147,7 @@ export class AiService {
     name: string;
     type: string;
   }): Promise<string> {
+    await this.assertDailyBudget();
     try {
       const response = await this.client.messages.create({
         model: MODEL,
@@ -136,6 +174,7 @@ export class AiService {
     messages: Anthropic.MessageParam[],
     tools: Anthropic.Tool[],
   ): Promise<Anthropic.Message> {
+    await this.assertDailyBudget();
     try {
       return await this.client.messages.create({
         model: MODEL,

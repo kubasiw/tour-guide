@@ -22,6 +22,15 @@ import {
   NgbTypeaheadSelectItemEvent,
 } from '@ng-bootstrap/ng-bootstrap';
 import * as L from 'leaflet';
+// leaflet-draw (old-style plugin, no import/require of its own) mutates a bare global `L`
+// (`L.Draw = {}`, etc.) — it has no way to see the module-scoped `L` from the import above.
+// In dev (`ng serve`) this happens to line up by accident; in the real production bundle it
+// doesn't, so leaflet-draw's mutations land on a different object than the one this file reads,
+// leaving `L.Draw` undefined here (crashes on `L.Draw.Event.CREATED` in initMap). Confirmed live
+// 2026-07-27: broken on tourguide.kubsiw.com (production build), fine on localhost:4200 (dev
+// server). Explicitly forcing `window.L` to be this exact object closes that gap regardless of
+// how the bundler treats the import.
+(window as unknown as { L: typeof L }).L = L;
 import 'leaflet-draw';
 import {
   Observable,

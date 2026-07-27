@@ -1270,6 +1270,16 @@ is complete; work now moves to "Beyond MVP" below.
     `fileReplacements` celu `build-element`; główna appka nadal poprawnie używa relatywnego `/api`
     (`api-base-url.prod.ts`). Pełny opis w `PORTFOLIO_PLAN.md` (krok 8 Fazy 3) i checklista
     wdrożenia w `INFRA_SETUP.md` (kroki 10-11), oba w repo `portfolio-shell`.
+    **Piąty bug złapany przy realnym osadzeniu w portfolio-shell (2026-07-27):** widget renderował
+    się poprawnie przy `curl` (200 OK na `/elements/main.js`), ale w prawdziwej przeglądarce
+    ładowanie skryptu z portfolio-shell kończyło się `TypeError: Failed to fetch` — **ES module
+    scripty (`<script type="module">`) zawsze przechodzą przez CORS przy pobieraniu, niezależnie
+    od atrybutu `crossorigin`**, inaczej niż klasyczne skrypty (które CORS przy ładowaniu
+    pomijają). `curl` nie egzekwuje CORS, więc nie złapał tego wcale — złapane wyłącznie przez
+    realny test w przeglądarce z dwóch różnych originów. Naprawione dodaniem
+    `add_header Access-Control-Allow-Origin "*";` do lokacji `/elements/` w `nginx.conf` —
+    `*`, nie konkretna domena, bo skrypt z założenia ma być osadzalny na dowolnej stronie, nic
+    wrażliwego w nim nie ma.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

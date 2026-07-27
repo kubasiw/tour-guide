@@ -28,10 +28,14 @@ import * as L from 'leaflet';
 // doesn't, so leaflet-draw's mutations land on a different object than the one this file reads,
 // leaving `L.Draw` undefined here (crashes on `L.Draw.Event.CREATED` in initMap). Confirmed live
 // 2026-07-27: broken on tourguide.kubsiw.com (production build), fine on localhost:4200 (dev
-// server). Explicitly forcing `window.L` to be this exact object closes that gap regardless of
-// how the bundler treats the import.
+// server). Forcing `window.L` to be this exact object closes that gap — but only if it runs
+// BEFORE leaflet-draw's own module code does. Static `import 'leaflet-draw'` doesn't allow that:
+// all static imports in a file fully evaluate before any of the file's own top-level statements
+// run, regardless of source-order placement — so a first attempt with a plain `import
+// 'leaflet-draw'` right after this assignment still ran leaflet-draw before the assignment,
+// confirmed live (identical crash, new bundle hash). Fixed instead with a *dynamic* `import()`
+// inside `initMap()` below, which only runs at actual runtime — guaranteed after this line.
 (window as unknown as { L: typeof L }).L = L;
-import 'leaflet-draw';
 import {
   Observable,
   catchError,
@@ -172,7 +176,7 @@ export class PlanSetup {
   private selectedTrailLayer?: L.FeatureGroup;
 
   public constructor() {
-    afterNextRender(() => this.initMap());
+    afterNextRender(() => void this.initMap());
 
     effect(() => {
       const map = this.mapSignal();
@@ -387,7 +391,12 @@ export class PlanSetup {
     });
   }
 
-  private initMap(): void {
+  private async initMap(): Promise<void> {
+    // Dynamic, not static, import — see the comment on `window.L = L` above for why: this must
+    // run after that assignment, and only a dynamic import (evaluated at this exact point in
+    // real runtime control flow, not hoisted like a static import) actually guarantees that.
+    await import('leaflet-draw');
+
     const map = L.map(this.mapContainer().nativeElement, { scrollWheelZoom: false }).setView(
       DEFAULT_CENTER,
       DEFAULT_ZOOM,

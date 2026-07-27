@@ -176,7 +176,7 @@ export class PlanSetup {
   private selectedTrailLayer?: L.FeatureGroup;
 
   public constructor() {
-    afterNextRender(() => void this.initMap());
+    afterNextRender(() => this.initMap());
 
     effect(() => {
       const map = this.mapSignal();
@@ -391,22 +391,15 @@ export class PlanSetup {
     });
   }
 
-  private async initMap(): Promise<void> {
-    // Dynamic, not static, import — see the comment on `window.L = L` above for why: this must
-    // run after that assignment, and only a dynamic import (evaluated at this exact point in
-    // real runtime control flow, not hoisted like a static import) actually guarantees that.
-    // Defensive try/catch: confirmed live that this same global-L trick doesn't hold up in every
-    // environment (Vitest/Node's own CJS interop when running plan-setup.spec.ts throws a
-    // different error here, unrelated to the real browser bug this is fixing) — swallow it and
-    // degrade to a map with no drawing tools rather than an unhandled rejection failing the
-    // whole test run.
-    let drawToolsAvailable = true;
-    try {
-      await import('leaflet-draw');
-    } catch {
-      drawToolsAvailable = false;
-    }
-
+  // Synchronous again, same as before the leaflet-draw fix — everything here is independent of
+  // leaflet-draw and must not wait on (or be delayed/skipped by) it. In particular,
+  // `destroyRef.onDestroy` below must run synchronously: registering it after an `await` risks
+  // NG0911 ("View has already been destroyed") if the component is torn down before the awaited
+  // code resumes — confirmed live, this exact regression happened when initMap itself was made
+  // async for the leaflet-draw fix (Vitest destroys the test fixture faster than the await
+  // resolves). Drawing tools are now set up separately by `setupDrawTools`, fire-and-forgotten,
+  // so they can be async on their own without dragging the rest of initMap's timing along.
+  private initMap(): void {
     const map = L.map(this.mapContainer().nativeElement, { scrollWheelZoom: false }).setView(
       DEFAULT_CENTER,
       DEFAULT_ZOOM,
@@ -424,36 +417,7 @@ export class PlanSetup {
 
     const drawnItems = new L.FeatureGroup().addTo(map);
 
-    if (drawToolsAvailable) {
-      const drawControl = new L.Control.Draw({
-        draw: {
-          polygon: {},
-          circle: {},
-          polyline: false,
-          rectangle: false,
-          marker: false,
-          circlemarker: false,
-        },
-        edit: {
-          featureGroup: drawnItems,
-        },
-      });
-      map.addControl(drawControl);
-
-      map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
-        const created = event as L.DrawEvents.Created;
-        drawnItems.clearLayers();
-        drawnItems.addLayer(created.layer);
-        this.area.set(this.layerToArea(created.layer));
-      });
-
-      map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
-        const edited = event as L.DrawEvents.Edited;
-        edited.layers.eachLayer((layer) => {
-          this.area.set(this.layerToArea(layer));
-        });
-      });
-    }
+    void this.setupDrawTools(map, drawnItems);
 
     this.trailsLayer = L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', {
       attribution:
@@ -470,6 +434,50 @@ export class PlanSetup {
 
     this.drawnItems = drawnItems;
     this.mapSignal.set(map);
+  }
+
+  // Split out from initMap so leaflet-draw's dynamic import (see the `window.L = L` comment
+  // above for why it must be dynamic, not static) can be async in complete isolation — nothing
+  // else in initMap waits on or is gated by this. Defensive try/catch throughout: confirmed live
+  // that the global-L trick doesn't hold up in every environment (Vitest/Node's own CJS interop
+  // when running plan-setup.spec.ts throws a different, unrelated error here) — swallow any
+  // failure and simply leave the map without drawing tools rather than an unhandled rejection
+  // failing a whole test run or crashing the app over an optional enhancement.
+  private async setupDrawTools(map: L.Map, drawnItems: L.FeatureGroup): Promise<void> {
+    try {
+      await import('leaflet-draw');
+    } catch {
+      return;
+    }
+
+    const drawControl = new L.Control.Draw({
+      draw: {
+        polygon: {},
+        circle: {},
+        polyline: false,
+        rectangle: false,
+        marker: false,
+        circlemarker: false,
+      },
+      edit: {
+        featureGroup: drawnItems,
+      },
+    });
+    map.addControl(drawControl);
+
+    map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+      const created = event as L.DrawEvents.Created;
+      drawnItems.clearLayers();
+      drawnItems.addLayer(created.layer);
+      this.area.set(this.layerToArea(created.layer));
+    });
+
+    map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
+      const edited = event as L.DrawEvents.Edited;
+      edited.layers.eachLayer((layer) => {
+        this.area.set(this.layerToArea(layer));
+      });
+    });
   }
 
   // Waymarked Trails' hiking tiles are transparent line overlays meant to sit

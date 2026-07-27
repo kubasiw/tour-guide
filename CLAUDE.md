@@ -1869,3 +1869,46 @@ Frontend-specific:
   the user has deliberately clicked into the map, and turns back off once the cursor leaves it, so
   the page underneath always scrolls normally otherwise. Apply the same fix to any future
   `L.map(...)` call in this app.
+  **Real bug found and fixed (2026-07-27), first hit on the real VPS deploy, not locally:**
+  drawing an area (circle/polygon) rendered visually but was never actually captured — worked fine
+  on `ng serve` (`localhost:4200`), broken specifically on the real production build
+  (`tourguide.kubsiw.com`), confirmed live via the browser console:
+  `TypeError: Cannot read properties of undefined (reading 'Event')` in `initMap`. Root cause,
+  confirmed by reading `leaflet-draw`'s actual bundled source, not assumed: it's an old-style
+  plugin with no `require`/`import` of its own — its whole `dist/leaflet.draw.js` is
+  `!function(t,e,i){...L.Draw={},...}(...)`, mutating a **bare global** `L` it expects to already
+  exist (`window.L`, classic pre-module script-tag assumption). This app's `import * as L from
+  'leaflet'` only creates a binding scoped to that one file — invisible to leaflet-draw's own free
+  variable `L`. In dev this happened to line up by accident; in the real esbuild production
+  bundle it doesn't, so leaflet-draw's mutations landed on a different object than the one
+  `plan-setup.ts` reads, leaving `L.Draw` undefined there.
+  **First fix attempt failed, also confirmed live (identical crash, new bundle hash):**
+  `window.L = L;` placed between the two static imports — doesn't work, because *all* static
+  imports in a file fully evaluate before any of that file's own top-level statements run,
+  regardless of their source-order position. `import 'leaflet-draw'` still ran before the
+  assignment ever had a chance to.
+  **Real fix:** removed the static `import 'leaflet-draw'` entirely; `window.L = L` now runs as
+  plain top-level code right after `import * as L from 'leaflet'` (this part *is* safe — it's
+  this file's own code, not a sibling import), and `leaflet-draw` is loaded via a **dynamic**
+  `await import('leaflet-draw')` inside a new `setupDrawTools(map, drawnItems)` method — dynamic
+  imports evaluate at their actual point in runtime control flow, not hoisted, so this is
+  guaranteed to run after the `window.L` assignment.
+  **Two more real bugs caught along the way, both only in the CI test run, not in a real
+  browser:** (1) loading `leaflet-draw` via Vitest/Node's own CJS interop (not a real browser)
+  throws a *different* error than the browser one — wrapped the dynamic import in try/catch,
+  degrading to "map with no drawing tools" instead of an unhandled rejection failing the whole
+  test suite; (2) making `initMap` itself `async` (so it could `await` the import directly) was a
+  mistake in its own right — a `destroyRef.onDestroy(...)` registration later in the same method
+  ran *after* an `await`, and Vitest destroys the test fixture faster than that await resolves,
+  throwing Angular's `NG0911` ("View has already been destroyed"). Fixed by keeping `initMap`
+  itself fully synchronous (so `destroyRef.onDestroy` still registers immediately, matching every
+  other synchronous lifecycle registration in this app) and moving *only* the leaflet-draw
+  loading + draw-control setup into the separate `setupDrawTools` async method, called as
+  `void this.setupDrawTools(map, drawnItems)` — fire-and-forget, fully isolated from the rest of
+  `initMap`'s timing.
+  **General lesson for any future old-style (non-ESM) Leaflet plugin added to this app:** check
+  whether it does its own `require`/`import` of `leaflet` before assuming a plain
+  `import 'plugin-name'` will work in the production build — if it mutates a bare global `L`
+  instead, it needs this same dynamic-import-after-`window.L`-assignment treatment, not a static
+  one. Confirmed working end-to-end only after a real deploy + real browser console check on
+  `tourguide.kubsiw.com` — the dev server alone would never have caught this.

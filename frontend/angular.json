@@ -61,7 +61,10 @@
                   "maximumError": "20kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "fileReplacements": [
+                { "replace": "src/app/core/api-base-url.ts", "with": "src/app/core/api-base-url.prod.ts" }
+              ]
             },
             "development": {
               "optimization": false,
@@ -100,7 +103,10 @@
                   "maximumError": "40kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "none",
+              "fileReplacements": [
+                { "replace": "src/app/core/api-base-url.ts", "with": "src/app/core/api-base-url.element.ts" }
+              ]
             },
             "development": {
               "optimization": false,

@@ -1253,6 +1253,23 @@ is complete; work now moves to "Beyond MVP" below.
     `fw-semibold` faktycznie pogrubia tekst wewnątrz shadow roota (`getComputedStyle` → `600`).
     Deploy tego widgetu pod realną subdomeną i wpięcie w portfolio-shell (kroki 8-9 w
     `PORTFOLIO_PLAN.md` po stronie portfolio) czeka na VPS — poza zasięgiem tego środowiska.
+    **✅ Kod deploy przygotowany (2026-07-27), sam VPS-owy deploy dalej czeka na akcję
+    właściciela.** `backend/Dockerfile` (multi-stage, `prisma migrate deploy` przy każdym starcie
+    kontenera — idempotentne), `frontend/Dockerfile` (buduje oba cele — główną appkę i widget — do
+    jednego kontenera nginx: appka pod `/`, widget pod `/elements/`), `deploy-docker-compose.yml`
+    (Traefik na wspólnej domenie `tourguide.kubsiw.com` rozdziela ruch do backendu/frontendu przez
+    `PathPrefix('/api')`, stąd nowy `app.setGlobalPrefix('api')` w `main.ts` — **wszystkie route'y
+    teraz mają prefiks `/api`**, health check to `GET /api/health`, nie `GET /health`). Wszystko
+    realnie zbudowane i przetestowane w Dockerze lokalnie (backend przeciw prawdziwemu Postgresowi,
+    11 migracji zastosowanych, `/api/health` → 200; frontend na `/`, SPA fallback, `/elements/main.js`).
+    **Najpoważniejszy złapany bug:** pierwsza wersja API URL-a dla widgetu była relatywna (`/api`) —
+    poprawne dla głównej appki (ten sam origin co backend), błędne dla widgetu, który z założenia
+    żyje osadzony na cudzej domenie (portfolio-shell) — relatywny `fetch()` rozwiązuje się względem
+    domeny strony-gospodarza, nie źródła `<script>`. Naprawione osobnym plikiem
+    `api-base-url.element.ts` (absolutny `https://tourguide.kubsiw.com/api`), podpiętym tylko pod
+    `fileReplacements` celu `build-element`; główna appka nadal poprawnie używa relatywnego `/api`
+    (`api-base-url.prod.ts`). Pełny opis w `PORTFOLIO_PLAN.md` (krok 8 Fazy 3) i checklista
+    wdrożenia w `INFRA_SETUP.md` (kroki 10-11), oba w repo `portfolio-shell`.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history
@@ -1395,8 +1412,13 @@ assume that alone regenerates the client; if `npm run lint`/`build` suddenly rep
 model method as untyped (`no-unsafe-*` errors), run `npx prisma generate` explicitly to refresh
 `node_modules/@prisma/client`.
 
-Backend listens on port 3000 (`process.env.PORT` override) and has CORS enabled for
-`http://localhost:4200` (see `src/main.ts`). Health check: `GET /health`.
+Backend listens on port 3000 (`process.env.PORT` override) and has CORS enabled for a fixed list
+of dev + production origins (see `src/main.ts`). **All routes are prefixed with `/api`**
+(`app.setGlobalPrefix('api')`, added 2026-07-24 for Faza 3 of `PORTFOLIO_PLAN.md` — lets Traefik
+on the shared VPS split `tourguide.kubsiw.com` between frontend and backend via
+`PathPrefix('/api')`, without needing a separate `api.*` subdomain). Health check:
+`GET /api/health`. Frontend's `API_BASE_URL` (`frontend/src/app/core/api-base-url.ts`) already
+includes the `/api` suffix — don't add it again in individual service calls.
 
 ### Frontend (`frontend/`)
 

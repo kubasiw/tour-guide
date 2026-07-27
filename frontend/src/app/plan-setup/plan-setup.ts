@@ -395,7 +395,17 @@ export class PlanSetup {
     // Dynamic, not static, import — see the comment on `window.L = L` above for why: this must
     // run after that assignment, and only a dynamic import (evaluated at this exact point in
     // real runtime control flow, not hoisted like a static import) actually guarantees that.
-    await import('leaflet-draw');
+    // Defensive try/catch: confirmed live that this same global-L trick doesn't hold up in every
+    // environment (Vitest/Node's own CJS interop when running plan-setup.spec.ts throws a
+    // different error here, unrelated to the real browser bug this is fixing) — swallow it and
+    // degrade to a map with no drawing tools rather than an unhandled rejection failing the
+    // whole test run.
+    let drawToolsAvailable = true;
+    try {
+      await import('leaflet-draw');
+    } catch {
+      drawToolsAvailable = false;
+    }
 
     const map = L.map(this.mapContainer().nativeElement, { scrollWheelZoom: false }).setView(
       DEFAULT_CENTER,
@@ -406,7 +416,7 @@ export class PlanSetup {
       maxZoom: 19,
     }).addTo(map);
 
-    // Trackpad/mouse-wheel scrolling over the map shouldn't hijack the page's
+    // Trackpad/mouse-wheel scrolling over the page's map shouldn't hijack the page's
     // own scroll — only zoom once the user has deliberately clicked into the
     // map, same pattern as embedded Google Maps.
     map.on('click', () => map.scrollWheelZoom.enable());
@@ -414,34 +424,36 @@ export class PlanSetup {
 
     const drawnItems = new L.FeatureGroup().addTo(map);
 
-    const drawControl = new L.Control.Draw({
-      draw: {
-        polygon: {},
-        circle: {},
-        polyline: false,
-        rectangle: false,
-        marker: false,
-        circlemarker: false,
-      },
-      edit: {
-        featureGroup: drawnItems,
-      },
-    });
-    map.addControl(drawControl);
-
-    map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
-      const created = event as L.DrawEvents.Created;
-      drawnItems.clearLayers();
-      drawnItems.addLayer(created.layer);
-      this.area.set(this.layerToArea(created.layer));
-    });
-
-    map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
-      const edited = event as L.DrawEvents.Edited;
-      edited.layers.eachLayer((layer) => {
-        this.area.set(this.layerToArea(layer));
+    if (drawToolsAvailable) {
+      const drawControl = new L.Control.Draw({
+        draw: {
+          polygon: {},
+          circle: {},
+          polyline: false,
+          rectangle: false,
+          marker: false,
+          circlemarker: false,
+        },
+        edit: {
+          featureGroup: drawnItems,
+        },
       });
-    });
+      map.addControl(drawControl);
+
+      map.on(L.Draw.Event.CREATED, (event: L.LeafletEvent) => {
+        const created = event as L.DrawEvents.Created;
+        drawnItems.clearLayers();
+        drawnItems.addLayer(created.layer);
+        this.area.set(this.layerToArea(created.layer));
+      });
+
+      map.on(L.Draw.Event.EDITED, (event: L.LeafletEvent) => {
+        const edited = event as L.DrawEvents.Edited;
+        edited.layers.eachLayer((layer) => {
+          this.area.set(this.layerToArea(layer));
+        });
+      });
+    }
 
     this.trailsLayer = L.tileLayer('https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png', {
       attribution:

@@ -15,7 +15,7 @@
 # JWT_EXPIRES_IN/ANTHROPIC_API_KEY) — patrz backend/.env.example w tym repo jako wzór kluczy.
 services:
   backend:
-    image: ghcr.io/TWOJ-USERNAME/tour-guide-backend:latest
+    image: ghcr.io/kubasiw/tour-guide-backend:latest
     container_name: tour-guide-backend
     restart: unless-stopped
     env_file:
@@ -25,6 +25,11 @@ services:
       - db-internal
     labels:
       - "traefik.enable=true"
+      # Bez tego Traefik nie wie, ktorej z dwoch podpietych siecie (web/db-internal) uzyc do
+      # routingu i moze wybrac db-internal (do ktorej Traefik nawet nie nalezy) -> 504 Gateway
+      # Timeout. Zlapane na zywo 2026-07-27: frontend (tylko siec web) dzialal od razu, backend
+      # (web + db-internal) wisial w nieskonczonosc az do timeoutu.
+      - "traefik.docker.network=web"
       - "traefik.http.routers.tourguide-api.rule=Host(`tourguide.kubsiw.com`) && PathPrefix(`/api`)"
       - "traefik.http.routers.tourguide-api.entrypoints=websecure"
       - "traefik.http.routers.tourguide-api.tls.certresolver=letsencrypt"
@@ -32,7 +37,7 @@ services:
       - "traefik.http.services.tourguide-api.loadbalancer.server.port=3000"
 
   frontend:
-    image: ghcr.io/TWOJ-USERNAME/tour-guide-frontend:latest
+    image: ghcr.io/kubasiw/tour-guide-frontend:latest
     container_name: tour-guide-frontend
     restart: unless-stopped
     networks:

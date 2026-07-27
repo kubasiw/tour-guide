@@ -1,0 +1,50 @@
+/*
+ * "Pieczątka" łącząca tour-guide z portfolio-shell (kubsiw.com) — ten sam mechanizm wizualny
+ * (podwójna ramka, rotacja, pełne nieprzezroczyste tło) co w portfolio-shell, ale we WŁASNYM
+ * kolorze tej apki (zieleń szlaku, nie karmazyn z portfolio) — spójne z zasadą "każda apka ma
+ * inny charakter graficzny" z PORTFOLIO_PLAN.md. Świadomie Inter (nie mono) — ta apka nigdy nie
+ * używa monospace nigdzie indziej (tylko Fraunces + Inter), więc trzeci font tylko dla stempla
+ * łamałby własną zasadę "max dwa fonty per widok".
+ * Dziecko .navbar.sticky-top (Bootstrap ustawia tam position:sticky) — porusza się razem z nim
+ * przy scrollu bez własnej logiki, tak samo jak w portfolio-shell.
+ */
+.portfolio-stamp {
+  position: absolute;
+  bottom: -18px;
+  right: 24px;
+  transform: rotate(-7deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  line-height: 1.3;
+  text-decoration: none;
+  border: 3px double var(--color-trail-green);
+  background: var(--color-page-bg);
+  color: var(--color-trail-green);
+  padding: 6px 12px;
+  font-family: var(--font-body);
+  text-transform: uppercase;
+}
+
+.portfolio-stamp:hover {
+  background: var(--color-trail-green-bg);
+}
+
+.portfolio-stamp__main {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.portfolio-stamp__sub {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+@media (max-width: 480px) {
+  .portfolio-stamp {
+    right: 8px;
+    transform: rotate(-7deg) scale(0.85);
+  }
+}

@@ -1280,6 +1280,20 @@ is complete; work now moves to "Beyond MVP" below.
     `add_header Access-Control-Allow-Origin "*";` do lokacji `/elements/` w `nginx.conf` —
     `*`, nie konkretna domena, bo skrypt z założenia ma być osadzalny na dowolnej stronie, nic
     wrażliwego w nim nie ma.
+    **✅ "Pieczątka" łącząca z portfolio-shell (2026-07-27).** Nowy `.portfolio-stamp` w
+    `app.html`/`app.scss` — dziecko `.navbar.sticky-top` (Bootstrap), realny link do
+    `https://kubsiw.com`. Ten sam mechanizm wizualny co pieczątka "w budowie" w portfolio-shell
+    (podwójna ramka, rotacja, pełne nieprzezroczyste tło — nie prawdziwy `gradient`, sam kolor z
+    przezroczystością byłby "prześwitujący", czego świadomie unikamy), ale we **własnym** kolorze
+    tej apki (zieleń szlaku `--color-trail-green`, nie karmazyn z portfolio) i **własnym** tekście
+    ("Projekt portfolio" / "Kuba S. →", nie "W budowie" — tour-guide jest realnie działającą,
+    wdrożoną apką, nie placeholderem, więc ten tekst by mylił). Zgodne z zasadą "każda apka ma
+    inny charakter graficzny" z `PORTFOLIO_PLAN.md` — ten sam MECHANIZM tworzy rozpoznawalny wątek
+    między apkami, bez kopiowania identycznego wyglądu. **Świadomie Inter, nie monospace** — ta
+    apka nigdy nie używa mono nigdzie indziej (tylko Fraunces + Inter), więc trzeci font tylko dla
+    stempla łamałby własną zasadę "max dwa fonty per widok". Zweryfikowane na żywo: opaque tło,
+    poprawny kolor/link, porusza się razem ze sticky navbarem przy scrollu, zero przewijania w
+    poziomie na 375px.
 
 Re-sequence this list if priorities change, but don't skip straight to POI/AI without the
 preference-capture steps first — that was a real point of confusion once already (see git history

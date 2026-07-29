@@ -86,12 +86,15 @@ export class PoiMap {
     map.on('click', () => map.scrollWheelZoom.enable());
     map.on('mouseout', () => map.scrollWheelZoom.disable());
 
-    const handleResize = (): void => {
+    // ResizeObserver (not window 'resize') — this map can sit inside a container whose size
+    // changes from a host-page layout reflow (e.g. the portfolio embed's grid column width),
+    // which never fires a window resize event at all.
+    const resizeObserver = new ResizeObserver(() => {
       map.invalidateSize();
-    };
-    window.addEventListener('resize', handleResize);
+    });
+    resizeObserver.observe(this.mapContainer().nativeElement);
     this.destroyRef.onDestroy(() => {
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       map.remove();
     });
 

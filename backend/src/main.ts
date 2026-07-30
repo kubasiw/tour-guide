@@ -1,9 +1,15 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  // Analogiczny audyt do portfolio-shell — helmet daje te same nagłówki (X-Content-Type-Options,
+  // Referrer-Policy, X-Frame-Options...) co tam ręcznie w nginx.conf. CSP wyłączony celowo — to
+  // czyste API zwracające JSON, nie serwuje HTML-a, więc CSP (myślany dla stron) nie ma tu
+  // realnego zastosowania i tylko zaśmiecałby nagłówki.
+  app.use(helmet({ contentSecurityPolicy: false }));
   // localhost:4200 = ta appka lokalnie; localhost:5173 = portfolio-shell lokalnie (dev);
   // localhost:4300 = lokalny statyczny serwer testowy dla wyodrębnionego <tour-guide-mini-map>
   // (frontend/dist/frontend-element); kubsiw.com = portfolio-shell produkcyjnie (osadzony

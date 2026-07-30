@@ -1435,6 +1435,20 @@ type-balanced but not distance-sorted from the area's center).
   4/5 correctly rejected) — deliberately *not* verified by actually calling the real Claude API
   repeatedly, since that would spend real money just to prove a cost-safety feature works.
 
+  **CSP header broke all styling in production (2026-07-30).** Added security headers
+  (`frontend/nginx.conf`) including `Content-Security-Policy`. Fine on `ng serve` (no CSP sent
+  locally), but broke all styling on `tourguide.kubsiw.com` — console: inline event handler
+  blocked by `script-src 'self'`. First fix (`'unsafe-inline'`) worked but was a real security
+  downgrade, done under pressure without finding the actual cause. Root cause: Angular CLI itself
+  emits `<link media="print" onload="this.media='all'">` in `index.html` (standard non-blocking
+  CSS trick) — without the `unsafe-inline`/hash, that `onload` never fires, so the stylesheet
+  never switches to `media="all"` and nothing applies, despite loading fine (200 OK). Fixed
+  properly with a CSP hash scoped to that exact handler content (`'unsafe-hashes'
+  'sha256-...'`), not a blanket `'unsafe-inline'` — verified both directions: the real handler
+  fires (styles apply), and an unrelated injected `onclick` is still blocked. Lesson: don't reach
+  for `unsafe-inline` as the first fix for a CSP breakage — find the actual inline script/handler
+  first, a hash is almost always available and far narrower.
+
 ## Commands
 
 Run all commands from within `frontend/` or `backend/` respectively — there is no root-level script runner.

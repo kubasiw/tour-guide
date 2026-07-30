@@ -1959,3 +1959,6 @@ Frontend-specific:
   instead, it needs this same dynamic-import-after-`window.L`-assignment treatment, not a static
   one. Confirmed working end-to-end only after a real deploy + real browser console check on
   `tourguide.kubsiw.com` — the dev server alone would never have caught this.
+  **To investigate (2026-07-30, reported by owner):** on mobile, drawing a circle (radius) on the
+  area-picker map doesn't work — polygon drawing does. Not yet root-caused; check real touch
+  behavior on `tourguide.kubsiw.com` (not just resized desktop viewport) before assuming a cause.

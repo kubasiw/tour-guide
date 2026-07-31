@@ -24,6 +24,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "frontend/dist/frontend-element/browser", "-l", "4300"],
       "port": 4300
+    },
+    {
+      "name": "insider-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/insider", "run", "dev"],
+      "port": 5180
     }
   ]
 }

@@ -1,7 +1,14 @@
 @use 'variables' as v;
 
 .poi-map__container {
-  height: 400px;
+  /* --poi-map-height lets a consumer override this from outside — specifically
+     mini-map-widget's shadow root, where the surrounding page (e.g. portfolio-shell's own
+     detail-page layout) may want a taller box than this component's own 400px default. Custom
+     properties are one of the few things that cross both Angular's Emulated encapsulation and a
+     Shadow DOM boundary via normal inheritance, unlike a plain class selector — real bug this
+     fixes: an external page setting a height on the *host* custom element had no way to reach
+     this internal, unencapsulated-selector-blocked class at all before this. */
+  height: var(--poi-map-height, 400px);
   width: 100%;
   border-radius: v.$border-radius;
   overflow: hidden;

@@ -1962,3 +1962,28 @@ Frontend-specific:
   **To investigate (2026-07-30, reported by owner):** on mobile, drawing a circle (radius) on the
   area-picker map doesn't work — polygon drawing does. Not yet root-caused; check real touch
   behavior on `tourguide.kubsiw.com` (not just resized desktop viewport) before assuming a cause.
+
+  **`.poi-map__container`'s height made configurable from outside (2026-07-31).** portfolio-shell
+  built its own detail-page view for tour-guide (mirroring Insider's split-view convention — write-
+  up + the live `<tour-guide-mini-map>` widget side by side, see `PORTFOLIO_PLAN.md`), wanting a
+  taller map there than the tile's compact 320px box. Two real bugs found only by measuring, not by
+  reading CSS: (1) giving the widget's *wrapper* a taller box via `min-height` wasn't enough — a
+  child's percentage `height` can only resolve against a parent with a *definite* height, and
+  `min-height` alone doesn't count (the parent's own size is otherwise driven by its content,
+  which would make the percentage circular; spec treats this as indefinite, not an error, so the
+  child just falls back to its own default size). Not this repo's problem to fix, but worth noting
+  for anyone consuming this widget from outside. (2) Even with a definite parent height,
+  `.poi-map__container`'s own hardcoded `height: 400px` (`poi-map.scss`) is a **plain class
+  selector** — invisible to anything outside `MiniMapWidget`'s shadow root, `!important` or not,
+  since Shadow DOM blocks selectors (not just styles) from crossing the boundary. Fixed by reading
+  a `--poi-map-height` custom property instead (`height: var(--poi-map-height, 400px)`) — custom
+  properties are one of the few things that *do* inherit through both Angular's Emulated
+  encapsulation and a Shadow DOM boundary, unlike a plain selector, so a consuming page can now set
+  `--poi-map-height` directly on the `<tour-guide-mini-map>` host element (light DOM) and have it
+  reach this internal class. Defaults to the original `400px` when unset — the tile's own usage is
+  completely unaffected, confirmed live (tile still renders at exactly 400px after this change,
+  only the detail-page instance — which sets `--poi-map-height: 100%` on the host — grows to fill
+  its taller box, Leaflet tile count going from 6 to 12 to match). **General lesson for this
+  widget:** any future "let the host page resize me" need should reach for the same custom-
+  property pattern, not a plain class override, since a plain class can never work here regardless
+  of specificity tricks.

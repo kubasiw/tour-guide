@@ -137,20 +137,27 @@
       </ngb-alert>
     }
 
-    <button
-      type="button"
-      class="btn btn-accent"
-      [class.btn-loading]="submitting()"
-      [disabled]="!area() || submitting()"
-      (click)="submit()"
-    >
-      <span class="btn-loading__label">
-        <i class="bi bi-check2-circle me-1"></i>{{ id() ? 'Zapisz zmiany' : 'Utwórz plan' }}
-      </span>
-      @if (submitting()) {
-        <app-loader variant="spinner" class="btn-loading__spinner" />
+    <div class="d-flex align-items-center flex-wrap gap-2">
+      <button
+        type="button"
+        class="btn btn-accent"
+        [class.btn-loading]="submitting()"
+        [disabled]="!area() || submitting()"
+        (click)="submit()"
+      >
+        <span class="btn-loading__label">
+          <i class="bi bi-check2-circle me-1"></i>{{ id() ? 'Zapisz zmiany' : 'Utwórz plan' }}
+        </span>
+        @if (submitting()) {
+          <app-loader variant="spinner" class="btn-loading__spinner" />
+        }
+      </button>
+      @if (!area()) {
+        <span class="text-body-secondary small">
+          <i class="bi bi-arrow-up me-1"></i>Zaznacz najpierw obszar na mapie powyżej.
+        </span>
       }
-    </button>
+    </div>
 
     <ng-template #dayTemplate let-date let-focused="focused">
       <span

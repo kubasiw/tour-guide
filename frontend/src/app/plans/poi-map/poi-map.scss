@@ -10,6 +10,11 @@
      this internal, unencapsulated-selector-blocked class at all before this. */
   height: var(--poi-map-height, 400px);
   width: 100%;
-  border-radius: v.$border-radius;
+  /* --poi-map-radius — same pattern as --poi-map-height above, added when portfolio-shell's own
+     "Atrament" redesign (2026-08) needed square corners for its microfrontend-band embed (its
+     whole design system is explicitly zero-radius everywhere), while this app's own default
+     look (and portfolio-shell's plain project-card tile, which doesn't set this) keeps the
+     normal Bootstrap radius unchanged. */
+  border-radius: var(--poi-map-radius, #{v.$border-radius});
   overflow: hidden;
 }

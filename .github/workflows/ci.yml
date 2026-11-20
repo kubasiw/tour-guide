@@ -1,0 +1,52 @@
+name: CI
+
+# Quality gate only. Tour-guide is no longer deployed anywhere (2026-11-20): the backend, Postgres
+# and the full frontend are not running; only the `build-element` widget bundle lives on, copied
+# into portfolio-shell (public/elements/tour-guide/main.js) next to a static POI snapshot — see
+# CLAUDE.md step 15. Replaces the old deploy.yml (Docker images -> GHCR -> SSH to the VPS).
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npx ng run frontend:build-element:production
+      - run: npm test -- --watch=false
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test

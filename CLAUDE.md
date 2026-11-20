@@ -20,6 +20,28 @@ Monorepo with two independent npm projects, no shared root package.json or works
 - `frontend/` — Angular 22, standalone components, signals, no SSR
 - `backend/` — NestJS 11
 
+## Hosting status — READ FIRST (2026-11-20)
+
+**Tour-guide is no longer deployed.** The Hetzner VPS (Traefik + Docker Compose, Postgres,
+`tourguide.kubsiw.com`) was shut down to cut cost to zero. Everything in the Roadmap below about
+deploying to that VPS, `tourguide.kubsiw.com`, GHCR images, `deploy-docker-compose.yml`, the `/api`
+Traefik routing and the SSH deploy job is **historical**. The full app (backend, DB, auth, AI) now
+only runs locally from this repo. What survives online is the map widget:
+
+- `ng run frontend:build-element:production` builds `dist/frontend-element/browser/main.js` (the
+  `<tour-guide-mini-map>` Web Component). It is **copied by hand** into
+  `portfolio-shell/public/elements/tour-guide/main.js`; commit/push portfolio-shell afterwards.
+- The widget has **no backend any more**: `mini-map-widget.ts` reads a static snapshot,
+  `krakow-demo-pois.json` (40 real Overpass/OSM POIs, 10 per type, generated once from the live
+  backend on 2026-11-20 via `GET /pois?south=50.0555&west=19.925&north=50.068&east=19.948`), located
+  *next to the script* via `import.meta.url` — so it works from any host. The snapshot lives in
+  `portfolio-shell/public/elements/tour-guide/`. To change the demo area, regenerate the JSON from a
+  locally running backend and replace that file.
+- `api-base-url.element.ts` is now `''` (nothing in the widget bundle calls an API).
+- `.github/workflows/ci.yml` only lints/builds/tests; `deploy.yml` and `deploy-docker-compose.yml`
+  were removed. The Dockerfiles/`nginx.conf` remain as a record of the old setup and still work for
+  running the stack in containers locally.
+
 ## Roadmap
 
 **Faza 1 (MVP)** — get a working skeleton first, in this order. ✅ All 5 steps done — the skeleton
